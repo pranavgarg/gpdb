@@ -67,15 +67,7 @@ sol10_sparc_32_CXX_LIB_DIR=/usr/sfw/lib
 BLD_CXX_LIB_DIR=$($(BLD_ARCH)_CXX_LIB_DIR)
 
 # help Windows builds find the cross-compiler and a pre-built curl
-ifeq "$(findstring win,$(BLD_ARCH))" "win"
-tmpPATH:=/usr/local/mingw32/bin:/usr/local/mingw32/mingw32/bin:/opt/curl-7.16.1-crosscompile/bin:$(PATH)
-export PATH:=$(tmpPATH)
-export WINDOWS=true
-export ANT_OPTS="-DminGW=true"
-export SCRIPT_EXT=bat
-export EXE_EXT=.exe
-export PY_EXT=.py
-endif
+include Makefile.windows
 
 #---------------------------------------------------------------------
 # Directory paths and file names

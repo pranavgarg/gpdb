@@ -5,6 +5,7 @@ default: all
 BLD_TOP=..
 include $(BLD_TOP)/Makefile.global
 include $(BLD_TOP)/Makefile.thirdparty
+include $(BLD_TOP)/Makefile.windows
 
 top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
@@ -23,6 +24,11 @@ mkgpfdist:
 		fi; \
 	else \
 		echo "gpfdist disabled"; \
+	fi
+
+install:
+	if [ "$(enable_gpfdist)" = "yes" ]; then \
+		cp -p gpfdist/gpfdist$(EXE_EXT) $(prefix)/bin/ ;\
 	fi
 
 .PHONY:
