@@ -6,11 +6,23 @@ BLD_TOP=..
 include $(BLD_TOP)/Makefile.global
 include $(BLD_TOP)/Makefile.thirdparty
 
+top_builddir = ../..
+include $(top_builddir)/src/Makefile.global
+
 all: mkgpfdist mkdbgen mkgphdfs
 
 .PHONY:
 mkgpfdist:
-	$(MAKE) -f Makefile.gpfdist INSTLOC=$(INSTLOC)
+	if [ "$(enable_gpfdist)" = "yes" ]; then \
+		echo "gpfdist enabled"; \
+		if [ -d "../ext" ]; then \
+			$(MAKE) -f Makefile.gpfdist INSTLOC=$(prefix); \
+		else \
+			cd gpfdist && ./configure --enable-transformations --prefix=$(prefix); \
+		fi; \
+	else \
+		echo "gpfdist disabled"; \
+	fi
 
 .PHONY:
 mkdbgen:
