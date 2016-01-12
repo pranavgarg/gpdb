@@ -5,12 +5,37 @@ default: all
 BLD_TOP=..
 include $(BLD_TOP)/Makefile.global
 include $(BLD_TOP)/Makefile.thirdparty
+include $(BLD_TOP)/Makefile.windows
+
+top_builddir = ../..
+include $(top_builddir)/src/Makefile.global
 
 all: mkgpfdist mkdbgen mkgphdfs
 
 .PHONY:
 mkgpfdist:
-	$(MAKE) -f Makefile.gpfdist INSTLOC=$(INSTLOC)
+	if [ "$(enable_gpfdist)" = "yes" ]; then \
+		echo "gpfdist enabled"; \
+		if [ -d "../ext" ]; then \
+			$(MAKE) -f Makefile.gpfdist INSTLOC=$(prefix); \
+		else \
+			cd gpfdist && ./configure --enable-transformations --prefix=$(prefix) \
+			&& $(MAKE); \
+		fi; \
+	else \
+		echo "gpfdist disabled"; \
+	fi
+
+install:
+	if [ "$(enable_gpfdist)" = "yes" ]; then \
+		cp -p gpfdist/gpfdist$(EXE_EXT) $(prefix)/bin/ ;\
+	fi
+
+clean:
+	@if [ -d gpfdist/GNUmakefile ]; then $(MAKE) -C gpfdist clean; fi
+
+distclean:
+	@if [ -d gpfdist/GNUmakefile ]; then $(MAKE) -C gpfdist clean; fi
 
 .PHONY:
 mkdbgen:

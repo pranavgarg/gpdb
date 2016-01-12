@@ -11,6 +11,7 @@ include $(top_builddir)/src/Makefile.global
 
 all:
 #	$(MAKE) -C doc all
+	$(MAKE) -C gpAux/extensions mkgpfdist
 	$(MAKE) -C src all
 	$(MAKE) -C config all
 	$(MAKE) -C contrib/xlogdump all
@@ -28,6 +29,7 @@ all:
 
 install:
 #	$(MAKE) -C doc $@
+	$(MAKE) -C gpAux/extensions $@
 	$(MAKE) -C src $@
 	$(MAKE) -C config $@
 	$(MAKE) -C contrib/xlogdump $@
