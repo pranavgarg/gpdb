@@ -18,7 +18,8 @@ mkgpfdist:
 		if [ -d "../ext" ]; then \
 			$(MAKE) -f Makefile.gpfdist INSTLOC=$(prefix); \
 		else \
-			cd gpfdist && ./configure --enable-transformations --prefix=$(prefix); \
+			cd gpfdist && ./configure --enable-transformations --prefix=$(prefix) \
+			&& $(MAKE); \
 		fi; \
 	else \
 		echo "gpfdist disabled"; \
