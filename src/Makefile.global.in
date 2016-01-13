@@ -181,6 +181,7 @@ enable_thread_safety	= @enable_thread_safety@
 enable_largefile	= @enable_largefile@
 enable_orca		= @enable_orca@
 enable_gpfdist		= @enable_gpfdist@
+enable_gphdfs		= @enable_gphdfs@
 enable_snmp			= @enable_snmp@
 enable_email		= @enable_email@
 enable_connectemc	= @enable_connectemc@

@@ -228,6 +228,13 @@ PGAC_ARG_BOOL(enable, gpfdist, yes,
 AC_SUBST(enable_gpfdist)
 
 #
+# gphdfs
+#
+PGAC_ARG_BOOL(enable, gphdfs, no,
+			               [  --enable-gphdfs       use gphdfs])
+AC_SUBST(enable_gphdfs)
+
+#
 # --enable-debug adds -g to compiler flags
 #
 PGAC_ARG_BOOL(enable, debug, no,

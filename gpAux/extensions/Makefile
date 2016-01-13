@@ -3,6 +3,7 @@
 default: all
 
 BLD_TOP=..
+
 include $(BLD_TOP)/Makefile.global
 include $(BLD_TOP)/Makefile.thirdparty
 include $(BLD_TOP)/Makefile.windows
@@ -17,10 +18,12 @@ endif
 
 all: mkgpfdist mkdbgen mkgphdfs
 
+
 .PHONY:
 mkgpfdist:
 	if [ "$(enable_gpfdist)" = "yes" ]; then \
 		echo "gpfdist enabled"; \
+		# we assume that ext only exists during an enterprise build
 		if [ -d "../ext" ]; then \
 			$(MAKE) -f Makefile.gpfdist INSTLOC=$(prefix); \
 		else \
@@ -31,7 +34,7 @@ mkgpfdist:
 		echo "gpfdist disabled"; \
 	fi
 
-install: mkgpfdist
+install: mkgpfdist mkgphdfs
 	if [ "$(enable_gpfdist)" = "yes" ]; then \
 		if [ ! -d $(prefix)/bin ]; then \
 			mkdir -p $(prefix)/bin ; \
@@ -51,9 +54,14 @@ mkdbgen:
 
 .PHONY:
 mkgphdfs:
-	PATH=$(INSTLOC)/bin:$(PATH) $(MAKE) -C gphdfs USE_PGXS=1 docdir=$(INSTLOC)/docs install \
-		ANT=/opt/releng/apache-ant/bin/ant \
-		JAVA_HOME=${JAVA_HOME}
+	if [ "$(enable_gphdfs)" = "yes" ]; then \
+		echo "gphdfs enabled"; \
+		PATH=$(prefix)/bin:$(PATH) $(MAKE) -C gphdfs USE_PGXS=1 docdir=$(prefix)/docs install \
+			ANT=/opt/releng/apache-ant/bin/ant \
+			JAVA_HOME=${JAVA_HOME}; \
+	else \
+		echo "gphdfs disabled"; \
+	fi
 
 # Use $JAVA_HOME if specified, otherwise look for java in the likely places.
 # Note that Darwin's JVM layout is pretty weird.  JDK 1.6 apears to be the

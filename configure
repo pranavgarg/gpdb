@@ -744,6 +744,7 @@ LCOV
 GCOV
 enable_profiling
 enable_debug
+enable_gphdfs
 enable_gpfdist
 enable_rpath
 enable_shared
@@ -812,6 +813,7 @@ enable_rpath
 enable_spinlocks
 enable_atomics
 enable_gpfdist
+enable_gphdfs
 enable_debug
 enable_profiling
 enable_coverage
@@ -1482,6 +1484,7 @@ disable 64-bit integer date/time support
   --disable-spinlocks     do not use spinlocks
   --disable-atomics       do not use atomic operations
   --disable-gpfdist       do not use gpfdist
+  --enable-gphdfs       use gphdfs
   --enable-debug          build with debugging symbols (-g)
   --enable-profiling      build with profiling enabled
 build with coverage testing instrumentation
@@ -3240,6 +3243,35 @@ if test "${enable_gpfdist+set}" = set; then :
 
 else
   enable_gpfdist=yes
+
+fi
+
+
+
+
+#
+# gphdfs
+#
+
+pgac_args="$pgac_args enable_gphdfs"
+
+# Check whether --enable-gphdfs was given.
+if test "${enable_gphdfs+set}" = set; then :
+  enableval=$enable_gphdfs;
+  case $enableval in
+    yes)
+      :
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --enable-gphdfs option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  enable_gphdfs=no
 
 fi
 

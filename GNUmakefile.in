@@ -25,6 +25,7 @@ all:
 	$(MAKE) -C contrib/gp_cancel_query all
 	$(MAKE) -C contrib/indexscan all
 	$(MAKE) -C gpAux/extensions mkgpfdist
+	$(MAKE) -C gpAux/extensions mkgphdfs
 	@echo "All of Greenplum Database successfully made. Ready to install."
 
 install:
