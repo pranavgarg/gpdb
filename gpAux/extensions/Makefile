@@ -26,9 +26,12 @@ mkgpfdist:
 		echo "gpfdist disabled"; \
 	fi
 
-install:
+install: mkgpfdist
 	if [ "$(enable_gpfdist)" = "yes" ]; then \
-		cp -p gpfdist/gpfdist$(EXE_EXT) $(prefix)/bin/ ;\
+		if [ ! -d $(prefix)/bin ]; then \
+			mkdir -p $(prefix)/bin ; \
+		fi; \
+		cp -p gpfdist/gpfdist$(EXE_EXT) $(prefix)/bin/ ; \
 	fi
 
 clean:
