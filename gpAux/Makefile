@@ -349,7 +349,7 @@ define BUILD_STEPS
 	cd $(BUILDDIR) && $(MAKE) $(parallelexec_opts) install
 	#@$(MAKE) greenplum_path INSTLOC=$(INSTLOC)
 	#@$(MAKE) groupSession INSTLOC=$(INSTLOC)
-	@$(MAKE) mkgpfdist INSTCFLAGS=$(INSTCFLAGS)
+	#@$(MAKE) mkgpfdist INSTCFLAGS=$(INSTCFLAGS)
 	@$(MAKE) mkdbgen INSTLOC=$(INSTLOC)
 	#@$(MAKE) mgmtcopy INSTLOC=$(INSTLOC)
 	@$(MAKE) mkpgbouncer INSTLOC=$(INSTLOC) BUILDDIR=$(BUILDDIR)
@@ -1328,7 +1328,7 @@ clean :
 	@if [ -d Release -a -f Release/GNUmakefile ]; then cd Release; $(MAKE) clean; fi
 	@if [ -d $(GPPGDIR) -a -f $(GPPGDIR)/GNUmakefile ]; then cd $(GPPGDIR); $(MAKE) clean; fi
 	@if [ -d $(GPMGMT)/bin ]; then cd $(GPMGMT)/bin; $(MAKE) clean; fi
-	@if [ -d extensions/gpfdist ]; then cd extensions/gpfdist; $(MAKE) clean; fi
+	#@if [ -d extensions/gpfdist ]; then cd extensions/gpfdist; $(MAKE) clean; fi
 	@if [ -d $(GPPERFMON) ]; then cd $(GPPERFMON); $(MAKE) clean; fi
 	@if [ -d client/odbc/src/Makefile ]; then cd client/odbc/src; $(MAKE) clean; fi
 
@@ -1338,7 +1338,7 @@ distclean :
 	@if [ -d Release -a -f Release/GNUmakefile ]; then cd Release; $(MAKE) distclean; fi
 	@if [ -d $(GPPGDIR) -a -f $(GPPGDIR)/GNUmakefile ]; then cd $(GPPGDIR); $(MAKE) distclean; fi
 	@if [ -d $(GPMGMT)/bin ]; then cd $(GPMGMT)/bin; $(MAKE) distclean; fi
-	@if [ -d extensions/gpfdist ]; then cd extensions/gpfdist; $(MAKE) clean; fi
+	#@if [ -d extensions/gpfdist ]; then cd extensions/gpfdist; $(MAKE) clean; fi
 	@if [ -d $(GPPERFMON) ]; then cd $(GPPERFMON); $(MAKE) clean; fi
 	@if [ -d client/odbc/src/Makefile ]; then cd client/odbc/src; $(MAKE) clean; fi
 	@rm -f VERSION

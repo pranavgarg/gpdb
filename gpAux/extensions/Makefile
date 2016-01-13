@@ -31,6 +31,12 @@ install:
 		cp -p gpfdist/gpfdist$(EXE_EXT) $(prefix)/bin/ ;\
 	fi
 
+clean:
+	@if [ -d gpfdist ]; then cd gpfdist; $(MAKE) clean; fi
+
+distclean:
+	@if [ -d gpfdist ]; then cd gpfdist; $(MAKE) clean; fi
+
 .PHONY:
 mkdbgen:
 	$(MAKE) -f Makefile.tpch INSTLOC=$(INSTLOC)
