@@ -88,6 +88,7 @@ clean:
 	$(MAKE) -C contrib/gp_internal_tools $@
 	$(MAKE) -C contrib/gp_cancel_query $@
 	$(MAKE) -C contrib/indexscan $@
+	$(MAKE) -C gpAux/extensions $@
 # Garbage from autoconf:
 	@rm -rf autom4te.cache/
 

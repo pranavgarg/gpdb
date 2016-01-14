@@ -44,6 +44,7 @@ install: mkgpfdist mkgphdfs
 
 clean:
 	@if [ -d gpfdist/GNUmakefile ]; then $(MAKE) -C gpfdist clean; fi
+	$(MAKE) -C gphdfs JAVA_HOME=${JAVA_HOME} ANT=/opt/releng/apache-ant/bin/ant
 
 distclean:
 	@if [ -d gpfdist/GNUmakefile ]; then $(MAKE) -C gpfdist clean; fi
