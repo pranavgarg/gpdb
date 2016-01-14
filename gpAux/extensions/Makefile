@@ -20,10 +20,10 @@ all: mkgpfdist mkdbgen mkgphdfs
 
 
 .PHONY:
+# we assume that ext only exists during an enterprise build
 mkgpfdist:
 	if [ "$(enable_gpfdist)" = "yes" ]; then \
 		echo "gpfdist enabled"; \
-		# we assume that ext only exists during an enterprise build
 		if [ -d "../ext" ]; then \
 			$(MAKE) -f Makefile.gpfdist INSTLOC=$(prefix); \
 		else \
