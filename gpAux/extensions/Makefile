@@ -10,6 +10,11 @@ include $(BLD_TOP)/Makefile.windows
 top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 
+ENV_JAVA_HOME:=$(shell echo $$JAVA_HOME)
+ifneq (${ENV_JAVA_HOME},)
+	JAVA_HOME=${ENV_JAVA_HOME}
+endif
+
 all: mkgpfdist mkdbgen mkgphdfs
 
 .PHONY:
