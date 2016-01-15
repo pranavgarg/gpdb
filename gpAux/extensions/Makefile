@@ -53,12 +53,14 @@ distclean:
 mkdbgen:
 	$(MAKE) -f Makefile.tpch INSTLOC=$(INSTLOC)
 
+
+ANT_HOME?=/opt/releng/apache-ant
 .PHONY:
 mkgphdfs:
 	if [ "$(enable_gphdfs)" = "yes" ]; then \
 		echo "gphdfs enabled"; \
 		PATH=$(prefix)/bin:$(PATH) $(MAKE) -C gphdfs USE_PGXS=1 docdir=$(prefix)/docs install \
-			ANT=/opt/releng/apache-ant/bin/ant \
+			ANT=${ANT_HOME}/bin/ant \
 			JAVA_HOME=${JAVA_HOME}; \
 	else \
 		echo "gphdfs disabled"; \

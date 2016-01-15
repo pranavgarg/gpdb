@@ -7,11 +7,25 @@
   <!-- ====================================================================== -->
 
   <resolvers>
-    <url name="shared" m2compatible="true">
+	  <!--
+	<url name="shared" m2compatible="true">
       <ivy      pattern="https://repo.eng.pivotal.io/artifactory/gpdb-ext-release-local/[organization]/[module]/[revision]/ivys/ivy-[revision].xml" />
       <artifact pattern="https://repo.eng.pivotal.io/artifactory/gpdb-ext-release-local/[organization]/[module]/[revision]/[type]s/[module]-[revision].[ext]" />
-    </url>
-    <filesystem name="local">
+  </url>
+  -->
+  <!--
+  <url name="shared" m2compatible="false">
+		<artifact
+			pattern="https://maven-repository.com/artifact/[organization]/[module]/[revision].[ext]" />
+	</url>
+	-->
+
+	<url name="shared" m2compatible="true">
+		<artifact
+			pattern="http://repo.spring.io/libs-release-remote/[organization]/[module]/[revision]/[module]-[revision].[ext]"/>
+	</url>
+
+	<filesystem name="local">
       <ivy      pattern="/opt/ivy/modules/[organisation]/[module]/ivy-[revision].xml" />
       <artifact pattern="/opt/ivy/modules/[organisation]/[module]/[type]s/[module]-[revision].[ext]" />
     </filesystem>
