@@ -39,7 +39,8 @@ dist/gpmr-1.2-gnet-1.0.0.1.jar:
                 -Dhadoop-common.revision=2.0.0-cdh4.1.2 \
                 -Dgphdgnet.version=gpmr-1.2-gnet-1.0.0.1 \
                 -Dgpgnet.src=1.2 \
-                -Dgpgnet.configuration=hadoop2
+                -Dgpgnet.configuration=hadoop2 \
+				-verbose
 
 dist/cdh3u2-gnet-1.1.0.0.jar:
 	$(ANT) clean
@@ -47,14 +48,6 @@ dist/cdh3u2-gnet-1.1.0.0.jar:
                 -Dname=hadoop-core \
                 -Drevision=0.20.2-cdh3u2 \
                 -Dgphdgnet.version=cdh3u2-gnet-1.1.0.0 \
-                -Dgpgnet.src=1.1
-
-dist/gphd-1.2-gnet-1.1.0.0.jar:
-	$(ANT) clean
-	ANT_OPTS=$(ANT_OPTS) $(ANT) dist -Dorg=org.apache.hadoop \
-                -Dname=hadoop-core \
-                -Drevision=1.0.3-gphd-1.2.0.0 \
-                -Dgphdgnet.version=gphd-1.2-gnet-1.1.0.0 \
                 -Dgpgnet.src=1.1
 
 dist/cdh4.1-gnet-1.2.0.0.jar:
@@ -67,16 +60,6 @@ dist/cdh4.1-gnet-1.2.0.0.jar:
                 -Dgpgnet.src=1.2 \
                 -Dgpgnet.configuration=hadoop2
 
-dist/gphd-2.0.2-gnet-1.2.0.0.jar:
-	$(ANT) clean
-	ANT_OPTS=$(ANT_OPTS) $(ANT) dist -Dorg=org.apache.hadoop \
-                -Dname=hadoop-core \
-                -Drevision=2.0.2-alpha-gphd-2.0.1.0 \
-                -Dhadoop-common.revision=2.0.2-alpha-gphd-2.0.1.0 \
-                -Dgphdgnet.version=gphd-2.0.2-gnet-1.2.0.0 \
-                -Dgpgnet.src=1.2 \
-                -Dgpgnet.configuration=hadoop2
-
 unittest: $(JAR_FILES)
 	$(ANT) clean
 	ANT_OPTS=$(ANT_OPTS) $(ANT) test -Dorg=org.apache.hadoop \
@@ -85,7 +68,8 @@ unittest: $(JAR_FILES)
                 -Dhadoop-common.revision=2.0.0-cdh4.1.2 \
                 -Dgphdgnet.version=cdh4.1-gnet-1.2.0.0 \
                 -Dgpgnet.src=1.2 \
-                -Dgpgnet.configuration=ut
+                -Dgpgnet.configuration=ut \
+				-verbose
 
 gnet-1.1-javadoc.tar: $(JAR_FILES)
 	$(ANT) javadoc -Dorg=apache \
