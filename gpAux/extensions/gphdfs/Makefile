@@ -68,8 +68,7 @@ unittest: $(JAR_FILES)
                 -Dhadoop-common.revision=2.0.0-cdh4.1.2 \
                 -Dgphdgnet.version=cdh4.1-gnet-1.2.0.0 \
                 -Dgpgnet.src=1.2 \
-                -Dgpgnet.configuration=ut \
-				-verbose
+                -Dgpgnet.configuration=ut 
 
 gnet-1.1-javadoc.tar: $(JAR_FILES)
 	$(ANT) javadoc -Dorg=apache \
