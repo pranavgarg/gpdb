@@ -2,7 +2,7 @@
 
   <!-- ====================================================================== -->
 
-  <settings defaultResolver="default" />
+  <settings defaultResolver="chain-resolver" />
   
   <!-- ====================================================================== -->
 
@@ -13,34 +13,26 @@
       <artifact pattern="https://repo.eng.pivotal.io/artifactory/gpdb-ext-release-local/[organization]/[module]/[revision]/[type]s/[module]-[revision].[ext]" />
   </url>
   -->
-<chain name="test" returnFirst="true" >
-	
-	<ibiblio name="ibiblio" m2compatible="true" />
-	
+	<chain name="chain-resolver" returnFirst="true" >
+	<!--		
 	<url name="shared" m2compatible="true">
-		<artifact
-			pattern="http://repo1.maven.org/maven2/[organization]/[module]/[revision]/[module]-[revision][type].[ext]"/>
+        <artifact
+            pattern="http://repo1.maven.org/maven2/[organization]/[module]/[revision]/[module]-[revision].[ext]"/>
 	</url>
-	
-	<url name="shared" m2compatible="true">
-		<artifact
-			pattern="http://repo.spring.io/libs-release-remote/[organization]/[module]/[revision]/[module]-[revision].[ext]"/>
-	</url>
-	
-	<filesystem name="local">
+	-->
+    <url name="shared" m2compatible="true">
+        <artifact
+            pattern="http://repo.spring.io/libs-release-remote/[organization]/[module]/[revision]/[module]-[revision].[ext]"/>
+    </url>
+
+    <filesystem name="local">
       <ivy      pattern="/opt/ivy/modules/[organisation]/[module]/ivy-[revision].xml" />
       <artifact pattern="/opt/ivy/modules/[organisation]/[module]/[type]s/[module]-[revision].[ext]" />
     </filesystem>
 
-</chain>
+	</chain>
 
 	</resolvers>
-	<!--
-	<chain name="test" returnFirst="true">
-		<ibiblio name="ibiblio" />
-		<url name="shared" />
-	</chain>
-	-->
   <include url="${ivy.default.settings.dir}/ivysettings-public.xml"/>
   <include url="${ivy.default.settings.dir}/ivysettings-main-chain.xml"/>
   <include url="${ivy.default.settings.dir}/ivysettings-default-chain.xml"/>

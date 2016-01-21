@@ -20,7 +20,6 @@
     </configurations>
 
     <dependencies>
-	<!--
       <dependency org="${org}"     name="${name}"    rev="${revision}"
 		  conf="compile->*"/>
       <dependency org="checkstyle" name="checkstyle" rev="${checkstyle.version}" conf="checkstyle->default"/>
@@ -57,24 +56,21 @@
 		  conf="hadoop2->default">
         <artifact name="hadoop-common" type="jar"/>
       </dependency>
-	  -->
 
       <!-- dependency for UT -->
-	  <!--
-      <dependency org="org.apache.hadoop" name="hadoop-client" rev="2.4.0" conf="ut->*"/>
+	  <dependency org="org.apache.hadoop" name="hadoop-client" rev="2.4.0" conf="ut->*"/>
+
 	  <dependency org="org.apache.hadoop" name="hadoop-common" rev="2.4.0" conf="ut->*">
-        <artifact name="hadoop-common" type="-tests" ext="jar" e:classifier="tests" />
-        <artifact name="hadoop-common" type="jar"/>
+        <artifact name="hadoop-common" type="test-jar" ext="jar" e:classifier="tests" />
+        <artifact name="hadoop-common" type="jar" />
       </dependency>
-	  -->
-	 
+
 	  <dependency org="org.apache.hadoop" name="hadoop-hdfs" rev="2.4.0"
 		  conf="ut->*">
-          <artifact name="hadoop-hdfs" type="jar"/>
-          <artifact name="hadoop-hdfs" type="-tests" ext="jar" e:classifier="tests" />
+          <artifact name="hadoop-hdfs" type="test-jar" ext="jar" e:classifier="tests" />
+          <artifact name="hadoop-hdfs" type="jar" />
       </dependency>
- 
-	  <!--
+
       <dependency org="log4j"                 name="log4j"                 rev="1.2.17" conf="ut->*"/>
       <dependency org="commons-lang"          name="commons-lang"          rev="2.6"    conf="ut->*"/>
       <dependency org="commons-configuration" name="commons-configuration" rev="1.9"    conf="ut->*" />
@@ -89,6 +85,5 @@
       <dependency org="org.apache.parquet" name="parquet-encoding"        rev="1.7.0"               conf="ut->*"/>
       <dependency org="org.apache.parquet" name="parquet-generator"        rev="1.7.0"               conf="ut->*"/>
       <dependency org="org.apache.parquet" name="parquet-format" rev="2.3.0-incubating" conf="ut->*"/>
-	  -->
   </dependencies>
 </ivy-module>

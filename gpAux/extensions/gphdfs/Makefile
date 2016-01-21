@@ -20,7 +20,7 @@ JAR_FILES =	dist/gpmr-1.0-gnet-1.0.0.1.jar \
 
 JAVADOC_TARS = gnet-1.1-javadoc.tar gnet-1.0-javadoc.tar
 
-all: $(JAR_FILES) unittest $(JAVADOC_TARS)
+all: $(JAR_FILES)
 
 dist/gpmr-1.0-gnet-1.0.0.1.jar:
 	$(ANT) clean
@@ -70,21 +70,21 @@ unittest: $(JAR_FILES)
                 -Dgpgnet.src=1.2 \
                 -Dgpgnet.configuration=ut 
 
-gnet-1.1-javadoc.tar: $(JAR_FILES)
-	$(ANT) javadoc -Dorg=apache \
-                   -Dname=hadoop-core \
-                   -Drevision=0.20.205.0-gphd-1.1.0.0 \
-                   -Dgphdgnet.version=gnet-1.1 \
-                   -Dgpgnet.src=1.1
-	$(TAR) -cf gnet-1.1-javadoc.tar gnet-1.1-javadoc
+#gnet-1.1-javadoc.tar: $(JAR_FILES)
+#	$(ANT) javadoc -Dorg=apache \
+#                   -Dname=hadoop-core \
+#                   -Drevision=0.20.205.0-gphd-1.1.0.0 \
+#                   -Dgphdgnet.version=gnet-1.1 \
+#                   -Dgpgnet.src=1.1
+#	$(TAR) -cf gnet-1.1-javadoc.tar gnet-1.1-javadoc
 
-gnet-1.0-javadoc.tar:  $(JAR_FILES)
-	$(ANT) javadoc -Dorg=apache \
-                   -Dname=hadoop-core \
-                   -Drevision=0.20.2 \
-                   -Dgphdgnet.version=gnet-1.0 \
-                   -Dgpgnet.src=1.0
-	$(TAR) -cf gnet-1.0-javadoc.tar gnet-1.0-javadoc
+#gnet-1.0-javadoc.tar:  $(JAR_FILES)
+#	$(ANT) javadoc -Dorg=apache \
+#                   -Dname=hadoop-core \
+#                   -Drevision=0.20.2 \
+#                   -Dgphdgnet.version=gnet-1.0 \
+#                   -Dgpgnet.src=1.0
+#	$(TAR) -cf gnet-1.0-javadoc.tar gnet-1.0-javadoc
 
 install-jars: $(JAR_FILES)
 	$(INSTALL_PROGRAM) dist/*.jar '$(DESTDIR)$(libdir)/hadoop/'
