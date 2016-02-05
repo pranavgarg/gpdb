@@ -38,6 +38,9 @@ MAJORVERSION = @PG_MAJORVERSION@
 # GPDB version number
 GP_MAJORVERSION = @GP_MAJORVERSION@
 
+# GPDB Full version number
+GP_VERSION = @GP_VERSION@
+
 ADDON_DIR = @ADDON_DIR@
 
 # Support for VPATH builds

@@ -224,7 +224,14 @@ PGAC_ARG_BOOL(enable, atomics, yes,
 # gpfdist
 #
 PGAC_ARG_BOOL(enable, gpfdist, yes,
-             [  --disable-gpfdist       do not use gpfdist])
+              [  --disable-gpfdist       do not use gpfdist],
+              [ if test "$with_openssl" = no || test "$with_openssl" = ""; then
+                 dnl we don't want to enable win32 openssl for now through gpfdist
+                 if test "$PORTNAME" != win32; then
+                   with_openssl=yes;
+                   AC_MSG_RESULT(enabling --with-openssl for gpfdist.)
+                 fi
+                fi ])
 AC_SUBST(enable_gpfdist)
 
 #
@@ -541,6 +548,7 @@ GP_VERSION_HEADER="src/include/catalog/gp_version.h"
 if grep '\$\$' $GP_VERSION_IN > /dev/null 2>&1 ; then
     sed "s,\\$.*\\$\\$,$GP_VERSION," $GP_VERSION_IN > $GP_VERSION_HEADER
 fi
+AC_SUBST(GP_VERSION)
 
 # Create compiler version string
 if test x"$GCC" = x"yes" ; then
@@ -904,9 +912,24 @@ AC_SUBST(with_libcurl)
 # libapr. Used for gpfdist.
 #
 AC_ARG_WITH(apr-config,
-            [AS_HELP_STRING([--with-apr-config=PATH],[path to apr-1-config])],
-            , [with_apr_config=yes])
-AC_SUBST(with_apr_config)
+[AS_HELP_STRING([--with-apr-config=PATH],[path to apr-1-config])],
+[], [with_apr_config=yes])
+
+if test "$with_apr_config" = yes; then
+  AC_PATH_PROGS(APR_CONFIG, apr-1-config)
+else
+  APR_CONFIG=$with_apr_config
+fi
+# Check that gpdb_top is set correctly. When cross-compiling, AC_CHECK_FILE
+# cannot be used, so just trust that it is correct.
+if test "$cross_compiling" != "yes"; then
+  AC_CHECK_FILE($srcdir/src/backend/utils/misc/fstream/fstream.c, [], [
+    AC_MSG_ERROR([$srcdir variable must be set to the path of the GPDB sources])])
+fi
+
+case $host_os in
+   mingw*) win32=yes ;;
+esac
 
 #
 # Elf
@@ -1104,15 +1127,36 @@ if test "$with_krb5" = yes ; then
   fi
 fi
 
-if test "$with_openssl" = yes ; then
-  dnl Order matters!
-  if test "$PORTNAME" != "win32"; then
-     AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, [], [AC_MSG_ERROR([library 'crypto' is required for OpenSSL])])
-     AC_CHECK_LIB(ssl,    SSL_library_init, [], [AC_MSG_ERROR([library 'ssl' is required for OpenSSL])])
-  else
-     AC_CHECK_LIB(eay32, CRYPTO_new_ex_data, [], [AC_MSG_ERROR([library 'eay32' is required for OpenSSL])])
-     AC_CHECK_LIB(ssleay32,    SSL_library_init, [], [AC_MSG_ERROR([library 'ssleay32' is required for OpenSSL])])
+#
+# Find APR headers and libraries
+#
+
+if test -n "$APR_CONFIG"; then
+  apr_includes=`"$APR_CONFIG" --includes`
+  apr_link_ld_libs=`"$APR_CONFIG" --link-ld --libs`
+  apr_cflags=`"$APR_CONFIG" --cflags`
+  apr_cppflags=`"$APR_CONFIG" --cppflags`
+  CPPFLAGS="$CPPFLAGS $apr_includes $apr_cppflags"
+  CFLAGS="$CFLAGS $apr_cflags"
+  LIBS="$LIBS $apr_link_ld_libs"
+fi
+
+if test "$enable_gpfdist" = yes; then
+  # If the 'apr-1-config --link-ld' produced correct output, -lapr-1 is already
+  # in LIBS, hence AC_SEARCH_LIBS rather than AC_CHECK_LIB. (and the autoconf
+  # manual recommends always using AC_SEARCH_LIBS rather than AC_CHECK_LIB
+  # anyway)
+  AC_SEARCH_LIBS(apr_getopt_long, [apr-1], [], [AC_MSG_ERROR([libapr-1 is required for gpfdist])])
+  AC_SEARCH_LIBS(event_add, [event], [], [AC_MSG_ERROR([libevent is required for gpfdist])])
+
+  if test "$win32" != yes; then
+    AC_SEARCH_LIBS(yaml_parser_initialize, [yaml], [], [AC_MSG_ERROR([libyaml is required for gpfdist])])
   fi
+fi
+
+if test "$with_openssl" = yes || test "$enable_gpfdist" = yes; then
+  AC_CHECK_LIB(crypto, CRYPTO_new_ex_data, [], [AC_MSG_ERROR([library 'crypto' is required for OpenSSL and/or gpfdist])])
+  AC_CHECK_LIB(ssl,    SSL_library_init, [], [AC_MSG_ERROR([library 'ssl' is required for OpenSSL and/or gpfdist])])
 fi
 
 if test "$with_rt" = yes ; then
@@ -1146,6 +1190,7 @@ AC_SEARCH_LIBS(BZ2_bzDecompress, bz2)
 if test "$enable_snmp" = yes ; then
 	AC_CHECK_LIB(netsnmp,  netsnmp_ds_set_string,  [], [AC_MSG_ERROR([library 'netsnmp' is required for snmp support])])
 fi
+
 
 ##
 ## Header files
@@ -1222,6 +1267,16 @@ Use --without-readline to disable libedit support.])])])])
                 [AC_CHECK_HEADERS(readline/history.h)])])
 fi
 
+if test "$enable_gpfdist" = yes; then
+  if test "$win32" = yes; then
+    AC_CHECK_HEADERS([winsock2.h])
+  else
+    AC_CHECK_HEADER(yaml.h, [], [AC_MSG_ERROR([header file <yaml.h> is required for gpfdist])])
+  fi
+  AC_CHECK_HEADER(apr_getopt.h, [], [AC_MSG_ERROR([header file <apr_getopt.h> is required])])
+  AC_CHECK_HEADER(event.h, [], [AC_MSG_ERROR([header file <event.h> is required])])
+fi
+
 if test "$with_zlib" = yes; then
   AC_CHECK_HEADER(zlib.h, [], [AC_MSG_ERROR([zlib header not found
 If you have zlib already installed, see config.log for details on the
@@ -1238,7 +1293,7 @@ if test "$with_krb5" = yes ; then
   AC_CHECK_HEADER(krb5.h, [], [AC_MSG_ERROR([header file <krb5.h> is required for Kerberos 5])])
 fi
 
-if test "$with_openssl" = yes ; then
+if test "$with_openssl" = yes || test "$enable_gpfdist" = yes; then
   AC_CHECK_HEADER(openssl/ssl.h, [], [AC_MSG_ERROR([header file <openssl/ssl.h> is required for OpenSSL])])
   AC_CHECK_HEADER(openssl/err.h, [], [AC_MSG_ERROR([header file <openssl/err.h> is required for OpenSSL])])
   AC_CHECK_FUNCS([ERR_set_mark])
@@ -2035,6 +2090,7 @@ fi
 AC_MSG_NOTICE([using CFLAGS=$CFLAGS])
 AC_MSG_NOTICE([using CPPFLAGS=$CPPFLAGS])
 AC_MSG_NOTICE([using LDFLAGS=$LDFLAGS])
+AC_MSG_NOTICE([using LIBS=$LIBS])
 
 
 # prepare build tree if outside source tree

@@ -696,7 +696,7 @@ LDFLAGS_EX
 ELF_SYS
 EGREP
 GREP
-with_apr_config
+APR_CONFIG
 with_libcurl
 with_rt
 with_zlib
@@ -723,6 +723,7 @@ enable_orca
 autodepend
 TAS
 GP_MAJORVERSION
+GP_VERSION
 BLD_ARCH
 GCC
 CPP
@@ -3231,7 +3232,13 @@ if test "${enable_gpfdist+set}" = set; then :
   enableval=$enable_gpfdist;
   case $enableval in
     yes)
-      :
+       if test "$with_openssl" = no || test "$with_openssl" = ""; then
+                                  if test "$PORTNAME" != win32; then
+                   with_openssl=yes;
+                   { $as_echo "$as_me:${as_lineno-$LINENO}: result: enabling --with-openssl for gpfdist." >&5
+$as_echo "enabling --with-openssl for gpfdist." >&6; }
+                 fi
+                fi
       ;;
     no)
       :
@@ -3243,7 +3250,13 @@ if test "${enable_gpfdist+set}" = set; then :
 
 else
   enable_gpfdist=yes
-
+ if test "$with_openssl" = no || test "$with_openssl" = ""; then
+                                  if test "$PORTNAME" != win32; then
+                   with_openssl=yes;
+                   { $as_echo "$as_me:${as_lineno-$LINENO}: result: enabling --with-openssl for gpfdist." >&5
+$as_echo "enabling --with-openssl for gpfdist." >&6; }
+                 fi
+                fi
 fi
 
 
@@ -5077,6 +5090,7 @@ if grep '\$\$' $GP_VERSION_IN > /dev/null 2>&1 ; then
     sed "s,\\$.*\\$\\$,$GP_VERSION," $GP_VERSION_IN > $GP_VERSION_HEADER
 fi
 
+
 # Create compiler version string
 if test x"$GCC" = x"yes" ; then
   cc_string="GCC `${CC} --version | sed q`"
@@ -6222,6 +6236,87 @@ else
 fi
 
 
+if test "$with_apr_config" = yes; then
+  for ac_prog in apr-1-config
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_APR_CONFIG+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $APR_CONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_APR_CONFIG="$APR_CONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_APR_CONFIG="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+APR_CONFIG=$ac_cv_path_APR_CONFIG
+if test -n "$APR_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $APR_CONFIG" >&5
+$as_echo "$APR_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+  test -n "$APR_CONFIG" && break
+done
+
+else
+  APR_CONFIG=$with_apr_config
+fi
+# Check that gpdb_top is set correctly. When cross-compiling, AC_CHECK_FILE
+# cannot be used, so just trust that it is correct.
+if test "$cross_compiling" != "yes"; then
+  as_ac_File=`$as_echo "ac_cv_file_$srcdir/src/backend/utils/misc/fstream/fstream.c" | $as_tr_sh`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $srcdir/src/backend/utils/misc/fstream/fstream.c" >&5
+$as_echo_n "checking for $srcdir/src/backend/utils/misc/fstream/fstream.c... " >&6; }
+if eval \${$as_ac_File+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  test "$cross_compiling" = yes &&
+  as_fn_error $? "cannot check for file existence when cross compiling" "$LINENO" 5
+if test -r "$srcdir/src/backend/utils/misc/fstream/fstream.c"; then
+  eval "$as_ac_File=yes"
+else
+  eval "$as_ac_File=no"
+fi
+fi
+eval ac_res=\$$as_ac_File
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
+
+else
+
+    as_fn_error $? "$srcdir variable must be set to the path of the GPDB sources" "$LINENO" 5
+fi
+
+fi
+
+case $host_os in
+   mingw*) win32=yes ;;
+esac
 
 #
 # Elf
@@ -8727,9 +8822,206 @@ fi
   fi
 fi
 
-if test "$with_openssl" = yes ; then
-    if test "$PORTNAME" != "win32"; then
-     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CRYPTO_new_ex_data in -lcrypto" >&5
+#
+# Find APR headers and libraries
+#
+
+if test -n "$APR_CONFIG"; then
+  apr_includes=`"$APR_CONFIG" --includes`
+  apr_link_ld_libs=`"$APR_CONFIG" --link-ld --libs`
+  apr_cflags=`"$APR_CONFIG" --cflags`
+  apr_cppflags=`"$APR_CONFIG" --cppflags`
+  CPPFLAGS="$CPPFLAGS $apr_includes $apr_cppflags"
+  CFLAGS="$CFLAGS $apr_cflags"
+  LIBS="$LIBS $apr_link_ld_libs"
+fi
+
+if test "$enable_gpfdist" = yes; then
+  # If the 'apr-1-config --link-ld' produced correct output, -lapr-1 is already
+  # in LIBS, hence AC_SEARCH_LIBS rather than AC_CHECK_LIB. (and the autoconf
+  # manual recommends always using AC_SEARCH_LIBS rather than AC_CHECK_LIB
+  # anyway)
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing apr_getopt_long" >&5
+$as_echo_n "checking for library containing apr_getopt_long... " >&6; }
+if ${ac_cv_search_apr_getopt_long+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char apr_getopt_long ();
+int
+main ()
+{
+return apr_getopt_long ();
+  ;
+  return 0;
+}
+_ACEOF
+for ac_lib in '' apr-1; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_apr_getopt_long=$ac_res
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext
+  if ${ac_cv_search_apr_getopt_long+:} false; then :
+  break
+fi
+done
+if ${ac_cv_search_apr_getopt_long+:} false; then :
+
+else
+  ac_cv_search_apr_getopt_long=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_apr_getopt_long" >&5
+$as_echo "$ac_cv_search_apr_getopt_long" >&6; }
+ac_res=$ac_cv_search_apr_getopt_long
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+else
+  as_fn_error $? "libapr-1 is required for gpfdist" "$LINENO" 5
+fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing event_add" >&5
+$as_echo_n "checking for library containing event_add... " >&6; }
+if ${ac_cv_search_event_add+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char event_add ();
+int
+main ()
+{
+return event_add ();
+  ;
+  return 0;
+}
+_ACEOF
+for ac_lib in '' event; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_event_add=$ac_res
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext
+  if ${ac_cv_search_event_add+:} false; then :
+  break
+fi
+done
+if ${ac_cv_search_event_add+:} false; then :
+
+else
+  ac_cv_search_event_add=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_event_add" >&5
+$as_echo "$ac_cv_search_event_add" >&6; }
+ac_res=$ac_cv_search_event_add
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+else
+  as_fn_error $? "libevent is required for gpfdist" "$LINENO" 5
+fi
+
+
+  if test "$win32" != yes; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing yaml_parser_initialize" >&5
+$as_echo_n "checking for library containing yaml_parser_initialize... " >&6; }
+if ${ac_cv_search_yaml_parser_initialize+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char yaml_parser_initialize ();
+int
+main ()
+{
+return yaml_parser_initialize ();
+  ;
+  return 0;
+}
+_ACEOF
+for ac_lib in '' yaml; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_yaml_parser_initialize=$ac_res
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext
+  if ${ac_cv_search_yaml_parser_initialize+:} false; then :
+  break
+fi
+done
+if ${ac_cv_search_yaml_parser_initialize+:} false; then :
+
+else
+  ac_cv_search_yaml_parser_initialize=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_yaml_parser_initialize" >&5
+$as_echo "$ac_cv_search_yaml_parser_initialize" >&6; }
+ac_res=$ac_cv_search_yaml_parser_initialize
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+else
+  as_fn_error $? "libyaml is required for gpfdist" "$LINENO" 5
+fi
+
+  fi
+fi
+
+if test "$with_openssl" = yes || test "$enable_gpfdist" = yes; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CRYPTO_new_ex_data in -lcrypto" >&5
 $as_echo_n "checking for CRYPTO_new_ex_data in -lcrypto... " >&6; }
 if ${ac_cv_lib_crypto_CRYPTO_new_ex_data+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -8773,10 +9065,10 @@ _ACEOF
   LIBS="-lcrypto $LIBS"
 
 else
-  as_fn_error $? "library 'crypto' is required for OpenSSL" "$LINENO" 5
+  as_fn_error $? "library 'crypto' is required for OpenSSL and/or gpfdist" "$LINENO" 5
 fi
 
-     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_library_init in -lssl" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_library_init in -lssl" >&5
 $as_echo_n "checking for SSL_library_init in -lssl... " >&6; }
 if ${ac_cv_lib_ssl_SSL_library_init+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -8820,105 +9112,9 @@ _ACEOF
   LIBS="-lssl $LIBS"
 
 else
-  as_fn_error $? "library 'ssl' is required for OpenSSL" "$LINENO" 5
+  as_fn_error $? "library 'ssl' is required for OpenSSL and/or gpfdist" "$LINENO" 5
 fi
 
-  else
-     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CRYPTO_new_ex_data in -leay32" >&5
-$as_echo_n "checking for CRYPTO_new_ex_data in -leay32... " >&6; }
-if ${ac_cv_lib_eay32_CRYPTO_new_ex_data+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-leay32  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char CRYPTO_new_ex_data ();
-int
-main ()
-{
-return CRYPTO_new_ex_data ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_eay32_CRYPTO_new_ex_data=yes
-else
-  ac_cv_lib_eay32_CRYPTO_new_ex_data=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_eay32_CRYPTO_new_ex_data" >&5
-$as_echo "$ac_cv_lib_eay32_CRYPTO_new_ex_data" >&6; }
-if test "x$ac_cv_lib_eay32_CRYPTO_new_ex_data" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBEAY32 1
-_ACEOF
-
-  LIBS="-leay32 $LIBS"
-
-else
-  as_fn_error $? "library 'eay32' is required for OpenSSL" "$LINENO" 5
-fi
-
-     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_library_init in -lssleay32" >&5
-$as_echo_n "checking for SSL_library_init in -lssleay32... " >&6; }
-if ${ac_cv_lib_ssleay32_SSL_library_init+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lssleay32  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char SSL_library_init ();
-int
-main ()
-{
-return SSL_library_init ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_ssleay32_SSL_library_init=yes
-else
-  ac_cv_lib_ssleay32_SSL_library_init=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssleay32_SSL_library_init" >&5
-$as_echo "$ac_cv_lib_ssleay32_SSL_library_init" >&6; }
-if test "x$ac_cv_lib_ssleay32_SSL_library_init" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBSSLEAY32 1
-_ACEOF
-
-  LIBS="-lssleay32 $LIBS"
-
-else
-  as_fn_error $? "library 'ssleay32' is required for OpenSSL" "$LINENO" 5
-fi
-
-  fi
 fi
 
 if test "$with_rt" = yes ; then
@@ -9292,6 +9488,7 @@ else
 fi
 
 fi
+
 
 ##
 ## Header files
@@ -9695,6 +9892,48 @@ done
 
 fi
 
+if test "$enable_gpfdist" = yes; then
+  if test "$win32" = yes; then
+    for ac_header in winsock2.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "winsock2.h" "ac_cv_header_winsock2_h" "$ac_includes_default"
+if test "x$ac_cv_header_winsock2_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_WINSOCK2_H 1
+_ACEOF
+
+fi
+
+done
+
+  else
+    ac_fn_c_check_header_mongrel "$LINENO" "yaml.h" "ac_cv_header_yaml_h" "$ac_includes_default"
+if test "x$ac_cv_header_yaml_h" = xyes; then :
+
+else
+  as_fn_error $? "header file <yaml.h> is required for gpfdist" "$LINENO" 5
+fi
+
+
+  fi
+  ac_fn_c_check_header_mongrel "$LINENO" "apr_getopt.h" "ac_cv_header_apr_getopt_h" "$ac_includes_default"
+if test "x$ac_cv_header_apr_getopt_h" = xyes; then :
+
+else
+  as_fn_error $? "header file <apr_getopt.h> is required" "$LINENO" 5
+fi
+
+
+  ac_fn_c_check_header_mongrel "$LINENO" "event.h" "ac_cv_header_event_h" "$ac_includes_default"
+if test "x$ac_cv_header_event_h" = xyes; then :
+
+else
+  as_fn_error $? "header file <event.h> is required" "$LINENO" 5
+fi
+
+
+fi
+
 if test "$with_zlib" = yes; then
   ac_fn_c_check_header_mongrel "$LINENO" "zlib.h" "ac_cv_header_zlib_h" "$ac_includes_default"
 if test "x$ac_cv_header_zlib_h" = xyes; then :
@@ -9750,7 +9989,7 @@ fi
 
 fi
 
-if test "$with_openssl" = yes ; then
+if test "$with_openssl" = yes || test "$enable_gpfdist" = yes; then
   ac_fn_c_check_header_mongrel "$LINENO" "openssl/ssl.h" "ac_cv_header_openssl_ssl_h" "$ac_includes_default"
 if test "x$ac_cv_header_openssl_ssl_h" = xyes; then :
 
@@ -15048,6 +15287,8 @@ $as_echo "$as_me: using CFLAGS=$CFLAGS" >&6;}
 $as_echo "$as_me: using CPPFLAGS=$CPPFLAGS" >&6;}
 { $as_echo "$as_me:${as_lineno-$LINENO}: using LDFLAGS=$LDFLAGS" >&5
 $as_echo "$as_me: using LDFLAGS=$LDFLAGS" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: using LIBS=$LIBS" >&5
+$as_echo "$as_me: using LIBS=$LIBS" >&6;}
 
 
 # prepare build tree if outside source tree
