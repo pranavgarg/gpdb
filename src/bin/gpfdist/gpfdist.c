@@ -51,9 +51,11 @@
 
 #endif
 
+#ifdef USE_SSL
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
+#endif
 #include "gpfdist_helper.h"
 #include <pg_config.h>
 
@@ -84,6 +86,7 @@ static long SESSION_SEQ = 0;		/*  sequence number for session */
 
 static bool base16_decode(char* data);
 
+#ifdef USE_SSL
 /* SSL additions */
 #define SSL_RENEGOTIATE_TIMEOUT_SEC	(600) /* 10 minutes */
 const char* const CertificateFilename = "server.crt";
@@ -93,6 +96,7 @@ static SSL_CTX *initialize_ctx(void);
 static void handle_ssl_error(SOCKET sock, BIO *sbio, SSL *ssl);
 static void flush_ssl_buffer(int fd, short event, void* arg);
 /* SSL end */
+#endif
 
 /**************
 
@@ -164,10 +168,16 @@ static struct
 	int			z; /* listen queue size (hidden option currently for debugging) */
 	const char* c; /* config file */
 	struct transform* trlist; /* transforms from config file */
+#ifdef USE_SSL
 	const char* ssl; /* path to certificates in case we use gpfdist with ssl */
 	int 		sslclean; /* Defines the time to wait [sec] until cleanup the SSL resources (internal, not documented) */
+#endif
 	int			w; /* The time used for session timeout in seconds */
-} opt = { 8080, 8080, 0, 0, 0, ".", 0, 0, -1, 5, 0, 32768, 0, 256, 0, 0, 0, 5, 0 };
+} opt = { 8080, 8080, 0, 0, 0, ".", 0, 0, -1, 5, 0, 32768, 0, 256, 0, 0,
+#ifdef USE_SSL
+	0, 5,
+#endif
+	0 };
 
 
 typedef union address
@@ -195,8 +205,10 @@ static struct
 	apr_int64_t 	read_bytes;
 	apr_int64_t 	total_bytes;
 	int 			total_sessions;
+#ifdef USE_SSL
 	BIO 			*bio_err;	/* for SSL */
 	SSL_CTX 		*server_ctx;/* for SSL */
+#endif
 } gcb;
 
 /*  A session */
@@ -278,11 +290,13 @@ struct request_t
 	char*           line_delim_str;
 	int             line_delim_length;
 
+#ifdef USE_SSL
 	/* SSL related */
 	BIO			*io;		/* for the i.o. */
 	BIO			*sbio;		/* for the accept */
 	BIO			*ssl_bio;
 	SSL			*ssl;
+#endif
 };
 
 
@@ -338,21 +352,27 @@ static void handle_post_request(request_t *r, int header_end);
 static void handle_get_request(request_t *r);
 
 static int gpfdist_socket_send(const request_t *r, const void *buf, const size_t buflen);
-static int gpfdist_SSL_send(const request_t *r, const void *buf, const size_t buflen);
 static int (*gpfdist_send)(const request_t *r, const void *buf, const size_t buflen); /* function pointer */
 static int gpfdist_socket_receive(const request_t *r, void *buf, const size_t buflen);
-static int gpfdist_SSL_receive(const request_t *r, void *buf, const size_t buflen);
 static int (*gpfdist_receive)(const request_t *r, void *buf, const size_t buflen); /* function pointer */
+static void request_cleanup(request_t *r);
+#ifdef USE_SSL
+static int gpfdist_SSL_send(const request_t *r, const void *buf, const size_t buflen);
+static int gpfdist_SSL_receive(const request_t *r, void *buf, const size_t buflen);
 static void free_SSL_resources(const request_t *r);
 static void setup_flush_ssl_buffer(request_t* r);
-static void request_cleanup(request_t *r);
 static void request_cleanup_and_free_SSL_resources(int fd, short event, void* arg);
+#endif
 static int local_send(request_t *r, const char* buf, int buflen);
 
 static int get_unsent_bytes(request_t* r);
 
 static void * palloc_safe(request_t *r, apr_pool_t *pool, apr_size_t size, const char *fmt, ...);
 static void * pcalloc_safe(request_t *r, apr_pool_t *pool, apr_size_t size, const char *fmt, ...);
+
+void process_signal(int sig);
+int gpfdist_init(int argc, const char* const argv[]);
+int gpfdist_run(void);
 
 /*
  * block_fill_header
@@ -479,12 +499,18 @@ static void usage_error(const char* msg, int print_usage)
 						"        -v         : verbose mode\n"
 						"        -V         : more verbose\n"
 						"        -s         : simplified minimum log\n"
+#ifdef USE_SSL
 						"        -p port    : port to serve HTTP(S), default is 8080\n"
+#else
+						"        -p port    : port to serve HTTP, default is 8080\n"
+#endif
 						"        -d dir     : serve files under the specified directory,  default is '.'\n"
 						"        -l logfn   : log filename\n"
 						"        -t tm      : timeout in seconds \n"
 						"        -m maxlen  : max data row length expected, in bytes. default is 32768\n"
+#ifdef USE_SSL
 						"        --ssl dir  : start HTTPS server. Use the certificates from the specified directory\n"
+#endif
 #ifdef GPFXDIST
 					    "        -c file    : configuration file for transformations\n"
 #endif
@@ -546,8 +572,10 @@ static void parse_command_line(int argc, const char* const argv[],
 	{ NULL, 'm', 1, "max data row length expected" },
 	{ NULL, 'S', 0, "use O_SYNC when opening files for write" },
 	{ NULL, 'z', 1, "internal - queue size for listen call" },
+#ifdef USE_SSL
 	{ "ssl", 257, 1, "ssl - certificates files under this directory" },
 	{ "sslclean", 258, 1, "Defines the time to wait [sec] untill cleanup the SSL resources" },
+#endif
 #ifdef GPFXDIST
 	{ NULL, 'c', 1, "transform configuration file" },
 #endif
@@ -622,12 +650,14 @@ static void parse_command_line(int argc, const char* const argv[],
 		case 'c':
 			opt.c = arg;
 			break;
+#ifdef USE_SSL
 		case 257:
 			opt.ssl = arg;
 			break;
 		case 258:
 			opt.sslclean = atoi(arg);
 			break;
+#endif
 		case 256:
 			print_version();
 			break;
@@ -735,6 +765,7 @@ static void parse_command_line(int argc, const char* const argv[],
 
 	}
 
+#ifdef USE_SSL
 	/* validate opt.ssl */
 	if (opt.ssl)
 	{
@@ -768,6 +799,7 @@ static void parse_command_line(int argc, const char* const argv[],
 	/* Validate opt.sslclean*/
 	if ( (opt.sslclean < 0) || (opt.sslclean > 300) )
 		usage_error("Error: -sslclean timeout must be between 0 and 300 [sec] (default is 5[sec])", 0);
+#endif
 
 #ifdef GPFXDIST
     /* validate opt.c */
@@ -1111,14 +1143,13 @@ static void request_end(request_t* r, int error, const char* errmsg)
 	}
 
 	/* If we still have data in the buffer - flush it */
-	if ( opt.ssl )
-	{
+#ifdef USE_SSL
+	if (opt.ssl)
 		flush_ssl_buffer(r->sock, 0, r);
-	}
 	else
-	{
+#else
 		request_cleanup(r);
-	}
+#endif
 }
 
 static int local_send(request_t *r, const char* buf, int buflen)
@@ -1832,6 +1863,7 @@ static void do_read_request(int fd, short event, void* arg)
 		return;
 	}
 
+#ifdef USE_SSL
 	/* Execute only once */
 	if (opt.ssl && !r->io && !r->ssl_bio)
 	{
@@ -1845,6 +1877,7 @@ static void do_read_request(int fd, short event, void* arg)
 		/* session is automatically renegotiated	*/
 		BIO_set_ssl_renegotiate_timeout(r->ssl_bio, SSL_RENEGOTIATE_TIMEOUT_SEC);
 	}
+#endif
 
 	/* how many bytes left in the header buf */
 	int n = r->in.hbufmax - r->in.hbuftop;
@@ -1996,9 +2029,12 @@ static void do_accept(int fd, short event, void* arg)
 	apr_pool_t* 		pool;
 	int 				on = 1;
 	struct linger		linger;
+
+#ifdef USE_SSL
 	BIO 				*sbio = NULL;	/* only for SSL */
 	SSL 				*ssl = NULL;	/* only for SSL */
 	int 				rd;				/* only for SSL */
+#endif
 
 	/* do the accept */
 	if ((sock = accept(fd, (struct sockaddr*) &a, &len)) < 0)
@@ -2007,6 +2043,7 @@ static void do_accept(int fd, short event, void* arg)
 		goto failure;
 	}
 
+#ifdef USE_SSL
 	if (opt.ssl)
 	{
 		sbio = BIO_new_socket(sock, BIO_NOCLOSE);
@@ -2024,6 +2061,8 @@ static void do_accept(int fd, short event, void* arg)
 
 		gprint(NULL, "[%d] Using SSL\n", (int)sock);
 	}
+#endif
+
 	/* set to non-blocking, and close-on-exec */
 #ifdef WIN32
 	{
@@ -2034,20 +2073,24 @@ static void do_accept(int fd, short event, void* arg)
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1)
 	{
 		gwarning(NULL, "fcntl(F_SETFL, O_NONBLOCK) failed");
+#ifdef USE_SSL
 		if ( opt.ssl )
 		{
 			handle_ssl_error(sock, sbio, ssl);
 		}
+#endif
 		closesocket(sock);
 		goto failure;
 	}
 	if (fcntl(sock, F_SETFD, 1) == -1)
 	{
 		gwarning(NULL, "fcntl(F_SETFD) failed");
+#ifdef USE_SSL
 		if ( opt.ssl )
 		{
 			handle_ssl_error(sock, sbio, ssl);
 		}
+#endif
 		closesocket(sock);
 		goto failure;
 	}
@@ -2082,8 +2125,10 @@ static void do_accept(int fd, short event, void* arg)
 	r->in.hbuf = palloc_safe(r, pool, r->in.hbufmax, "out of memory when allocating r->in.hbuf: %d", r->in.hbufmax);
 
 	r->is_final = 0;	/* initialize */
+#ifdef USE_SSL
 	r->ssl = ssl;
 	r->sbio = sbio;
+#endif
 
 	{
 		char host[128];
@@ -2263,6 +2308,7 @@ http_setup(void)
 	char service[32];
 	const char *hostaddr = NULL;
 
+#ifdef USE_SSL
 	if (opt.ssl)
 	{
 		/* Build our SSL context*/
@@ -2276,6 +2322,10 @@ http_setup(void)
 		gpfdist_send 	= gpfdist_socket_send;
 		gpfdist_receive = gpfdist_socket_receive;
 	}
+#else
+		gpfdist_send 	= gpfdist_socket_send;
+		gpfdist_receive = gpfdist_socket_receive;
+#endif
 
 	gcb.listen_sock_count = 0;
 	if (opt.b != NULL && strlen(opt.b) > 1)
@@ -3420,10 +3470,13 @@ int gpfdist_init(int argc, const char* const argv[])
 	event_init();
 	http_setup();
 
+#ifdef USE_SSL
 	if (opt.ssl)
 		printf("Serving HTTPS on port %d, directory %s\n", opt.p, opt.d);
 	else
+#else
 		printf("Serving HTTP on port %d, directory %s\n", opt.p, opt.d);
+#endif
 
 	fflush(stdout);
 
@@ -3753,6 +3806,7 @@ void ControlHandler(DWORD request)
 
 #define find_max(a,b) ((a) >= (b) ? (a) : (b))
 
+#ifdef USE_SSL
 static SSL_CTX *initialize_ctx(void)
 {
 	int			stringSize;
@@ -3850,6 +3904,7 @@ static SSL_CTX *initialize_ctx(void)
 	free(fileName);
 	return ctx;
 }
+#endif
 
 
 /*
@@ -3863,7 +3918,7 @@ static int gpfdist_socket_send(const request_t *r, const void *buf, const size_t
 	return send(r->sock, buf, buflen, 0);
 }
 
-
+#ifdef USE_SSL
 /*
  * gpfdist_SSL_send
  *
@@ -3909,6 +3964,7 @@ static int gpfdist_SSL_send(const request_t *r, const void *buf, const size_t bu
 
 	return n;
 }
+#endif
 
 
 /*
@@ -3922,6 +3978,7 @@ static int gpfdist_socket_receive(const request_t *r, void *buf, const size_t bu
 }
 
 
+#ifdef USE_SSL
 /*
  * gpfdist_SSL_receive
  *
@@ -4020,6 +4077,7 @@ static void setup_flush_ssl_buffer(request_t* r)
 	r->tm.tv_usec = 0;
 	(void)event_add(&r->ev, &r->tm);
 }
+#endif
 
 
 /*
@@ -4137,6 +4195,7 @@ static void setup_do_close(request_t* r)
 }
 
 
+#ifdef USE_SSL
 /*
  * request_cleanup_and_free_SSL_resources
  *
@@ -4153,6 +4212,7 @@ static void request_cleanup_and_free_SSL_resources(int fd, short event, void* ar
 	/* Release SSL related memory */
 	free_SSL_resources(r);
 }
+#endif
 
 
 /*
