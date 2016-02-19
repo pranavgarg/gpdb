@@ -1191,7 +1191,6 @@ if test "$enable_snmp" = yes ; then
 	AC_CHECK_LIB(netsnmp,  netsnmp_ds_set_string,  [], [AC_MSG_ERROR([library 'netsnmp' is required for snmp support])])
 fi
 
-
 ##
 ## Header files
 ##
