@@ -51,13 +51,13 @@
 
 #endif
 
+#include <pg_config.h>
+#include "gpfdist_helper.h"
 #ifdef USE_SSL
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
 #endif
-#include "gpfdist_helper.h"
-#include <pg_config.h>
 
 /*  A data block */
 typedef struct blockhdr_t blockhdr_t;
@@ -1147,6 +1147,7 @@ static void request_end(request_t* r, int error, const char* errmsg)
 	if (opt.ssl)
 		flush_ssl_buffer(r->sock, 0, r);
 	else
+		request_cleanup(r);
 #else
 		request_cleanup(r);
 #endif
