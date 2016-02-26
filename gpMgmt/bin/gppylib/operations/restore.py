@@ -587,6 +587,10 @@ class RestoreDatabase(Operation):
                 cmd.run(validateAfter=False)
                 self._process_result(cmd)
 
+            if not self.no_ao_stats:
+                logger.info("Updating AO/CO statistics on master")
+                update_ao_statistics(self.master_port, restore_db, self.restore_tables)
+
         if not self.metadata_only:
             if (not self.no_analyze) and (len(self.restore_tables) == 0):
                 self._analyze(restore_db, self.master_port)
