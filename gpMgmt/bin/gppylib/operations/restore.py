@@ -44,13 +44,15 @@ POST_DATA_SUFFIX = '_post_data'
 # TODO: use CLI-agnostic custom exceptions instead of ExceptionNoStackTraceNeeded
 
 def update_ao_stat_func(conn, ao_schema, ao_table, counter, batch_size):
-    qry = "SELECT * FROM gp_update_ao_master_stats('%s.%s')" % (pg.escape_string(escapeDoubleQuoteInSQLString(ao_schema)), 
+    qry = "SELECT * FROM gp_update_ao_master_stats('%s.%s')" % (pg.escape_string(escapeDoubleQuoteInSQLString(ao_schema)),
                                                                 pg.escape_string(escapeDoubleQuoteInSQLString(ao_table)))
     rows = execSQLForSingleton(conn, qry)
     if counter % batch_size == 0:
         conn.commit()
 
-def update_ao_statistics(master_port, dbname, restored_tables):
+def update_ao_statistics(master_port, dbname, restored_tables, restored_schema=None, restore_all=False):
+    # Restored schema is different from restored tables as restored schema
+    # updates all tables within that schema.
     qry = """SELECT c.relname,n.nspname
              FROM pg_class c, pg_namespace n
              WHERE c.relnamespace=n.oid
@@ -62,6 +64,13 @@ def update_ao_statistics(master_port, dbname, restored_tables):
     try:
         results = execute_sql(qry, master_port, dbname)
         for (tbl, sch) in results:
+            if restore_all:
+                restored_ao_tables.add((sch, tbl))
+                continue
+            if sch in restored_schema:
+                restored_ao_tables.add((sch, tbl))
+                continue
+
             tblname = '%s.%s' % (sch, tbl)
             if tblname in restored_tables:
                 restored_ao_tables.add((sch, tbl))
@@ -587,9 +596,16 @@ class RestoreDatabase(Operation):
                 cmd.run(validateAfter=False)
                 self._process_result(cmd)
 
+            restore_all=False
             if not self.no_ao_stats:
                 logger.info("Updating AO/CO statistics on master")
-                update_ao_statistics(self.master_port, restore_db, self.restore_tables)
+                # If we don't have a filter for table and schema, then we must
+                # be doing a full restore.
+                if len(self.schema_level_restore_list) == 0 and len(self.restore_tables) == 0:
+                    restore_all=True
+                update_ao_statistics(self.master_port, restore_db, self.restore_tables,
+                                     restored_schema=self.schema_level_restore_list, restore_all=restore_all,
+                                    )
 
         if not self.metadata_only:
             if (not self.no_analyze) and (len(self.restore_tables) == 0):
@@ -851,7 +867,7 @@ class RestoreDatabase(Operation):
 
             logger.info("Dropping Database %s" % restore_db)
             if count == 1:
-                cmd = Command(name='drop database %s' % restore_db, 
+                cmd = Command(name='drop database %s' % restore_db,
                               cmdStr='dropdb %s -p %s' % (checkAndAddEnclosingDoubleQuote(shellEscape(restore_db)), master_port))
                 cmd.run(validateAfter=True)
             logger.info("Dropped Database %s" % restore_db)
@@ -981,7 +997,7 @@ class RestoreDatabase(Operation):
         return restore_line
 
     def _build_post_data_schema_only_restore_line(self, restore_timestamp, restore_db, compress, master_port,
-                                                  table_filter_file, full_restore_with_filter, 
+                                                  table_filter_file, full_restore_with_filter,
                                                   change_schema_file=None, schema_level_restore_file=None):
         user = getpass.getuser()
         hostname = socket.gethostname()    # TODO: can this just be localhost? bash was using `hostname`
@@ -1026,7 +1042,7 @@ class RestoreDatabase(Operation):
         return restore_line
 
     def _build_schema_only_restore_line(self, restore_timestamp, restore_db, compress, master_port,
-                                        metadata_filename, table_filter_file, full_restore_with_filter, 
+                                        metadata_filename, table_filter_file, full_restore_with_filter,
                                         change_schema_file=None, schema_level_restore_file=None):
         user = getpass.getuser()
         hostname = socket.gethostname()    # TODO: can this just be localhost? bash was using `hostname`
@@ -1196,7 +1212,7 @@ def validate_tablenames(table_list, schema_level_restore_list=None):
             table_set.add((schema, table))
             restore_table_list.append(restore_table)
 
-    return restore_table_list, schema_level_restore_list 
+    return restore_table_list, schema_level_restore_list
 
 class ValidateRestoreTables(Operation):
     def __init__(self, restore_tables, restore_db, master_port):
