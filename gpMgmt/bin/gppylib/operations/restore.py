@@ -50,7 +50,7 @@ def update_ao_stat_func(conn, ao_schema, ao_table, counter, batch_size):
     if counter % batch_size == 0:
         conn.commit()
 
-def update_ao_statistics(master_port, dbname, restored_tables, restored_schema=None, restore_all=False):
+def update_ao_statistics(master_port, dbname, restored_tables, restored_schema=[], restore_all=False):
     # Restored schema is different from restored tables as restored schema
     # updates all tables within that schema.
     qry = """SELECT c.relname,n.nspname
