@@ -301,6 +301,7 @@ usage(void)
 	printf(("  --prefix=PREFIX         PREFIX of the dump files to be restored\n"));
 	printf(("  --change-schema-file=SCHEMA_FILE  Schema file containing the name of the schema to which tables are to be restored\n"));
 	printf(("  --schema-level-file=SCHEMA_FILE  Schema file containing the name of the schemas under which all tables are to be restored\n"));
+	printf(("  --ddboost_storage_unit_name             pass the storage unit name"));
 }
 
 bool
@@ -369,6 +370,7 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 
 #ifdef USE_DDBOOST
                 {"ddboost", no_argument, NULL, 10},
+                {"ddboost_storage_unit_name", required_argument, NULL, 19},
 #endif
 
 		{"gp-f", required_argument, NULL, 11},
@@ -568,7 +570,7 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 				opts->triggerNames = strdup(optarg);
 				pInputOpts->pszPassThroughParms = addPassThroughParm( c, optarg, pInputOpts->pszPassThroughParms );
 				break;
-*/ 
+*/
 			case 's':		/* dump schema only */
 				opts->schemaOnly = 1;
 				schemaOnly = true;
@@ -731,6 +733,9 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 			case 10:
 				dd_boost_enabled = 1;
 				break;
+			case 19:
+				pInputOpts->pszPassThroughParms = addPassThroughLongParm("ddboost_storage_unit_name", optarg, pInputOpts->pszPassThroughParms);
+				break;
 #endif
 			case 11:
 				pInputOpts->pszPassThroughParms = addPassThroughLongParm("gp-f", optarg, pInputOpts->pszPassThroughParms);
@@ -794,7 +799,7 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 		dataRestore = false;
 	}
 
-	
+
 #ifdef USE_DDBOOST
         if (dd_boost_enabled)
 	{
@@ -1118,7 +1123,7 @@ threadProc(void *arg)
 	pszNotifyRelNameFail = MakeString("%s_%s", pszNotifyRelName, SUFFIX_FAIL);
 
 	pollInput = (struct pollfd *)malloc(sizeof(struct pollfd));
-	
+
 	while (!bIsFinished)
 	{
 		/*
@@ -1137,18 +1142,18 @@ threadProc(void *arg)
 			DoCancelNotifyListen(pConn, false, pszKey, sSegDB->role, sSegDB->dbid, tSegDB->dbid, NULL);
 			bSentCancelMessage = true;
 		}
-		
-		/* Replacing select() by poll() here to overcome the limitations of 
+
+		/* Replacing select() by poll() here to overcome the limitations of
 		select() to handle large socket file descriptor values.
 		*/
 
 		pollInput->fd = sock;
 		pollInput->events = POLLIN;
-		pollInput->revents = 0; 		
+		pollInput->revents = 0;
 		pollTimeout = 2000;
 		pollResult = poll(pollInput, 1, pollTimeout);
 
-		if(pollResult < 0) 
+		if(pollResult < 0)
 		{
 			g_b_SendCancelMessage = true;
 			pParm->pszErrorMsg = MakeString("poll failed for backup key %s, source dbid %d, target dbid %d failed\n",

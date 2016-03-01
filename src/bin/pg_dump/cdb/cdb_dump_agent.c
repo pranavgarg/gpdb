@@ -279,7 +279,7 @@ char *formPostDumpFilePathName(char *pszBackupDirectory, char *pszBackupKey, int
 #include "ddp_api.h"
 static int dd_boost_enabled = 0; /* Is set to 1 if we are doing a backup onto Data Domain system */
 static int dd_boost_buf_size = 0;
-
+static char *ddboost_storage_unit_name = NULL;
 static void dumpDatabaseDefinitionToDDBoost(void);
 
 #ifndef MAX_PATH_NAME
@@ -300,7 +300,6 @@ static ddp_inst_desc_t ddp_inst = DDP_INVALID_DESCRIPTOR;
 static ddp_conn_desc_t ddp_conn = DDP_INVALID_DESCRIPTOR;
 
 static ddp_path_t path1 = {0};
-static char *DDP_SU_NAME = NULL;
 static char *DEFAULT_BACKUP_DIRECTORY = NULL;
 
 char *log_message_path = NULL;
@@ -513,6 +512,7 @@ main(int argc, char **argv)
 		{"dd_boost_enabled", no_argument, NULL, 7},
 		{"dd_boost_dir", required_argument, NULL, 8},
 		{"dd_boost_buf_size", required_argument, NULL, 9},
+		{"ddboost_storage_unit_name", required_argument, NULL, 18},
 #endif
 		{"incremental-filter", required_argument, NULL, 10},
 		{"netbackup-service-host", required_argument, NULL, 11},
@@ -762,6 +762,11 @@ main(int argc, char **argv)
 			case 9:
 				sscanf(optarg, "%d", &dd_boost_buf_size);
 				break;
+			case 18:
+				ddboost_storage_unit_name = optarg;
+				//sscanf(optarg, "%s", &ddboost_storage_unit_name);
+				//printf("Storage unit: %s\n", ddboost_storage_unit_name);
+				break;
 #endif
 			case 10:
 				incrementalFilter = pg_strdup(optarg);
@@ -886,7 +891,7 @@ main(int argc, char **argv)
 			exit(1);
 		}
 
-		ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, &DDP_SU_NAME, false, &DEFAULT_BACKUP_DIRECTORY, false);
+		ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, ddboost_storage_unit_name, false, &DEFAULT_BACKUP_DIRECTORY, false);
 		if (ret)
 		{
 			mpp_err_msg(logError, progname, "Error connecting to DDboost. Check parameters\n");
@@ -6229,7 +6234,7 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 		appendPQExpBuffer(q, "\n");
 
 		/*
-		 * MPP-25549: Dump ALTER statements for subpartition tables being 
+		 * MPP-25549: Dump ALTER statements for subpartition tables being
 		 * set to different schema other than the parent
 		 */
 		if (g_gp_supportsPartitioning)
@@ -7495,17 +7500,17 @@ monitorThreadProc(void *arg __attribute__((unused)))
 	while (!bGotFinished)
 	{
 
-		/* Replacing select() by poll() here to overcome the limitations of 
+		/* Replacing select() by poll() here to overcome the limitations of
 		select() to handle large socket file descriptor values.
 		*/
 
 		pollInput->fd = sock;
 		pollInput->events = POLLIN;
-		pollInput->revents = 0; 
+		pollInput->revents = 0;
 		pollTimeout = 2000;
 		pollResult = poll(pollInput, 1, pollTimeout);
 
-		if(pollResult < 0) 
+		if(pollResult < 0)
 		{
 			mpp_err_msg(logError, progname, "poll failed for backup key %s, instid %d, segid %d failed\n",
 						g_CDBDumpKey, g_role, g_dbID);
@@ -7943,7 +7948,7 @@ dumpDatabaseDefinitionToDDBoost()
 	 * Make sure we can create this file before we spin off sh cause we don't
 	 * get a good error message from sh if we can't write to the file
 	 */
-	path1.su_name = DDP_SU_NAME;
+	path1.su_name = ddboost_storage_unit_name;
 	path1.path_name = g_pszDDBoostDir;
 
 	err = createDDBoostDir(ddp_conn, path1.su_name, path1.path_name);
@@ -8182,7 +8187,7 @@ updateArchiveWithDDFile(ArchiveHandle *AH, char *g_pszDDBoostFile, const char *g
 	int err = 0;
 	char *dir_name = "db_dumps";
 
-	path1.su_name = DDP_SU_NAME;
+	path1.su_name = ddboost_storage_unit_name;
 
 	if (g_pszDDBoostDir)
 		path1.path_name  = pg_strdup(g_pszDDBoostDir);

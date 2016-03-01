@@ -200,9 +200,10 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 #ifdef USE_DDBOOST
 	char       	*pszDDBoostFileName = NULL;
 	char	   	*pszDDBoostDirName = "db_dumps";		/* Default directory */	
+	char	   	*pszDDBoostStorageUnitName = "GPDB";
 	char 	   	*dd_boost_buffer_size = NULL;
 	char		*gpDDBoostCmdLine = NULL;
-	char 		*temp = NULL, *pch = NULL, *pchs = NULL;
+	char 		*temp = NULL, *pch = NULL, *pchs = NULL, *pSUN = NULL, *pSUNs = NULL;
 #endif
 
 	verifyGpIdentityIsSet();
@@ -426,8 +427,19 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 			else
 				pszDDBoostDirName = strdup("db_dumps/");
 		}
+		pSUN = strstr(temp, "--ddboost_storage_unit_name");
+		int pSUN_len = 0;
+		if (pSUN)
+		{
+			pSUN = pSUN + strlen("--ddboost_storage_unit_name");
+			pSUNs = strtok(pSUN, " ");
+			if (pSUNs)
+				pszDDBoostStorageUnitName = strdup(pSUNs);
+			else
+				pszDDBoostStorageUnitName = strdup("GPDB");
+			pSUN_len = strlen(pszDDBoostStorageUnitName);
+		}
 		free(temp);
-
 
 		/* Create the gpddboost parameter string */
 		len = strlen(pszDDBoostDirName)
@@ -436,9 +448,11 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 			+ strlen("_post_data")
 			+ strlen(".gz")
 			+ strlen(" --to-file= ")
+			+ strlen(" --ddboost_storage_unit_name=  ")
 			+ strlen(" --write-file-from-stdin  ")
 			+ strlen(" --dd_boost_buf_size= ")
 			+ strlen(gpDDBoostPg)
+			+ pSUN_len
 			+ 20;
 
 		gpDDBoostCmdLine = (char *) palloc(len);
@@ -446,9 +460,13 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 		if (pszDDBoostFileName == NULL)
 			elog(ERROR, "\nDDboost filename is NULL\n");
 
-		sprintf(gpDDBoostCmdLine, "%s --write-file-from-stdin --to-file=%s/%s --dd_boost_buf_size=%s",
-				gpDDBoostPg, pszDDBoostDirName, pszDDBoostFileName, dd_boost_buffer_size);
-
+		sprintf(gpDDBoostCmdLine,
+			"%s --write-file-from-stdin --to-file=%s/%s --dd_boost_buf_size=%s --ddboost_storage_unit_name=%s ",
+			gpDDBoostPg,
+			pszDDBoostDirName,
+			pszDDBoostFileName,
+			dd_boost_buffer_size,
+			pszDDBoostStorageUnitName);
 	}
 
 
@@ -782,8 +800,14 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 
 			memset(gpDDBoostCmdLine, 0, strlen(gpDDBoostCmdLine));
 	
-			sprintf(gpDDBoostCmdLine, "%s --write-file-from-stdin --to-file=%s/%s --dd_boost_buf_size=%s",
-                                gpDDBoostPg, pszDDBoostDirName, pszDDBoostFileName, dd_boost_buffer_size);
+			sprintf(gpDDBoostCmdLine,
+				"%s --write-file-from-stdin --to-file=%s/%s "
+				"--dd_boost_buf_size=%s --ddboost_storage_unit_name=%s ",
+				gpDDBoostPg,
+				pszDDBoostDirName,
+				pszDDBoostFileName,
+				dd_boost_buffer_size,
+				pszDDBoostStorageUnitName);
 
 			/* if user selected a compression program */
 			if (pszCompressionProgram[0] != '\0')
