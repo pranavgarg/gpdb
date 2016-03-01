@@ -43,14 +43,14 @@ def list_to_quoted_string(filter_tables):
 
 def convert_parents_to_leafs(dbname, parents):
     partition_leaves_sql = """
-                           SELECT x.partitionschemaname || '.' || x.partitiontablename 
+                           SELECT x.partitionschemaname || '.' || x.partitiontablename
                            FROM (
-                                SELECT distinct schemaname, tablename, partitionschemaname, partitiontablename, partitionlevel 
-                                FROM pg_partitions 
+                                SELECT distinct schemaname, tablename, partitionschemaname, partitiontablename, partitionlevel
+                                FROM pg_partitions
                                 WHERE schemaname || '.' || tablename in (%s)
-                                ) as X, 
-                           (SELECT schemaname, tablename maxtable, max(partitionlevel) maxlevel 
-                            FROM pg_partitions 
+                                ) as X,
+                           (SELECT schemaname, tablename maxtable, max(partitionlevel) maxlevel
+                            FROM pg_partitions
                             group by (tablename, schemaname)
                            ) as Y
                            WHERE x.schemaname = y.schemaname and x.tablename = Y.maxtable and x.partitionlevel = Y.maxlevel;
@@ -169,16 +169,16 @@ def convert_reportfilename_to_cdatabasefilename(report_file, dump_prefix, ddboos
         dirname = "%s/%s" % (dirname, timestamp[0:8])
     return "%s/%sgp_cdatabase_1_1_%s" % (dirname, dump_prefix, timestamp)
 
-def get_lines_from_dd_file(filename):
+def get_lines_from_dd_file(filename, ddboost_storage_unit):
     cmd = Command('DDBoost copy of master dump file',
-                  'gpddboost --readFile --from-file=%s'
-                  % (filename))
+                  'gpddboost --readFile --from-file=%s --ddboost_storage_unit'
+                  % (filename , ddboost_storage_unit))
 
     cmd.run(validateAfter=True)
     contents = cmd.get_results().stdout.splitlines()
     return contents
 
-def check_cdatabase_exists(dbname, report_file, dump_prefix, ddboost=False, netbackup_service_host=None, netbackup_block_size=None):
+def check_cdatabase_exists(dbname, report_file, dump_prefix, ddboost=False, ddboost_storage_unit=None, netbackup_service_host=None, netbackup_block_size=None):
     try:
         filename = convert_reportfilename_to_cdatabasefilename(report_file, dump_prefix, ddboost)
     except Exception:
@@ -242,13 +242,13 @@ def get_all_occurrences(substr, line):
         return None
     return [m.start() for m in re.finditer('(?=%s)' % substr, line)]
 
-def get_type_ts_from_report_file(dbname, report_file, backup_type, dump_prefix, ddboost=False, netbackup_service_host=None, netbackup_block_size=None):
+def get_type_ts_from_report_file(dbname, report_file, backup_type, dump_prefix, ddboost=False, ddboost_storage_unit=None, netbackup_service_host=None, netbackup_block_size=None):
     report_file_contents = get_lines_from_file(report_file)
 
     if not check_successful_dump(report_file_contents):
         return None
 
-    if not check_cdatabase_exists(dbname, report_file, dump_prefix, ddboost, netbackup_service_host, netbackup_block_size):
+    if not check_cdatabase_exists(dbname, report_file, dump_prefix, ddboost, ddboost_storage_unit, netbackup_service_host, netbackup_block_size):
         return None
 
     if check_backup_type(report_file_contents, backup_type):
@@ -256,8 +256,8 @@ def get_type_ts_from_report_file(dbname, report_file, backup_type, dump_prefix, 
 
     return None
 
-def get_full_ts_from_report_file(dbname, report_file, dump_prefix, ddboost=False, netbackup_service_host=None, netbackup_block_size=None):
-    return get_type_ts_from_report_file(dbname, report_file, 'Full', dump_prefix, ddboost, netbackup_service_host, netbackup_block_size)
+def get_full_ts_from_report_file(dbname, report_file, dump_prefix, ddboost=False, ddboost_storage_unit=None, netbackup_service_host=None, netbackup_block_size=None):
+    return get_type_ts_from_report_file(dbname, report_file, 'Full', dump_prefix, ddboost, ddboost_storage_unit, netbackup_service_host, netbackup_block_size)
 
 def get_incremental_ts_from_report_file(dbname, report_file, dump_prefix, ddboost=False, netbackup_service_host=None, netbackup_block_size=None):
     return get_type_ts_from_report_file(dbname, report_file, 'Incremental', dump_prefix, ddboost, netbackup_service_host, netbackup_block_size)
@@ -294,13 +294,13 @@ def get_lines_from_zipped_file(fname):
         fd.close()
     return content
 
-def get_lines_from_file(fname, ddboost=None):
+def get_lines_from_file(fname, ddboost=None, ddboost_storage_unit=None):
     """
     Don't strip white space here as it may be part of schema name and table name
     """
     content = []
     if ddboost:
-        contents = get_lines_from_dd_file(fname)
+        contents = get_lines_from_dd_file(fname, ddboost_storage_unit)
         return contents
     else:
         with open(fname) as fd:
@@ -530,7 +530,7 @@ def get_full_timestamp_for_incremental(backup_dir, dump_dir, dump_prefix, increm
     return None
 
 # backup_dir will be either MDD or some other directory depending on call
-def get_latest_full_dump_timestamp(dbname, backup_dir, dump_dir, dump_prefix, ddboost=False):
+def get_latest_full_dump_timestamp(dbname, backup_dir, dump_dir, dump_prefix, ddboost=False, ddboost_storage_unit=None):
     if not backup_dir:
         raise Exception('Invalid None param to get_latest_full_dump_timestamp')
 
@@ -552,7 +552,7 @@ def get_latest_full_dump_timestamp(dbname, backup_dir, dump_dir, dump_prefix, dd
         dump_report_files = sorted(dump_report_files, key=lambda x: int(x.split('_')[-1].split('.')[0]), reverse=True)
         for dump_report_file in dump_report_files:
             logger.debug('Checking for latest timestamp in report file %s' % os.path.join(dump_dir, dump_report_file))
-            timestamp = get_full_ts_from_report_file(dbname, os.path.join(dump_dir, dump_report_file), dump_prefix, ddboost)
+            timestamp = get_full_ts_from_report_file(dbname, os.path.join(dump_dir, dump_report_file), dump_prefix, ddboost, ddboost_storage_unit)
             logger.debug('Timestamp = %s' % timestamp)
             if timestamp is not None:
                 return timestamp
@@ -592,7 +592,7 @@ def check_funny_chars_in_names(names, is_full_qualified_name=True):
     """
     '\n' inside table name makes it hard to specify the object name in shell command line,
     this may be worked around by using table file, but currently we read input line by line.
-    '!' inside table name will mess up with the shell history expansion.     
+    '!' inside table name will mess up with the shell history expansion.
     ',' is used for separating tables in plan file during incremental restore.
     '.' dot is currently being used for full qualified table name in format: schema.table
     """
@@ -748,7 +748,7 @@ def escapeDoubleQuoteInSQLString(string, forceDoubleQuote=True):
 
 def removeEscapingDoubleQuoteInSQLString(string, forceDoubleQuote=True):
     """
-    Remove the escaping double quote in database/schema/table name. 
+    Remove the escaping double quote in database/schema/table name.
     """
     if string is None:
         return string
@@ -761,7 +761,7 @@ def removeEscapingDoubleQuoteInSQLString(string, forceDoubleQuote=True):
 
 def formatSQLString(rel_file, isTableName=False):
     """
-    Read the full qualified schema or table name, do a split 
+    Read the full qualified schema or table name, do a split
     if each item is a table name into schema and table,
     escape the double quote inside the name properly.
     """
