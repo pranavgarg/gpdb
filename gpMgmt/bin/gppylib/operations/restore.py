@@ -50,6 +50,21 @@ def update_ao_stat_func(conn, ao_schema, ao_table, counter, batch_size):
     if counter % batch_size == 0:
         conn.commit()
 
+def generate_restored_tables(results, restored_tables, restored_schema, restore_all):
+    restored_ao_tables = set()
+
+    for (tbl, sch) in results:
+        if restore_all:
+            restored_ao_tables.add((sch, tbl))
+        elif sch in restored_schema:
+            restored_ao_tables.add((sch, tbl))
+        else:
+            tblname = '%s.%s' % (sch, tbl)
+            if tblname in restored_tables:
+                restored_ao_tables.add((sch, tbl))
+
+    return restored_ao_tables
+
 def update_ao_statistics(master_port, dbname, restored_tables, restored_schema=[], restore_all=False):
     # Restored schema is different from restored tables as restored schema
     # updates all tables within that schema.
@@ -61,19 +76,13 @@ def update_ao_statistics(master_port, dbname, restored_tables, restored_schema=[
     conn = None
     counter = 1
     restored_ao_tables = set()
+
     try:
         results = execute_sql(qry, master_port, dbname)
-        for (tbl, sch) in results:
-            if restore_all:
-                restored_ao_tables.add((sch, tbl))
-                continue
-            if sch in restored_schema:
-                restored_ao_tables.add((sch, tbl))
-                continue
-
-            tblname = '%s.%s' % (sch, tbl)
-            if tblname in restored_tables:
-                restored_ao_tables.add((sch, tbl))
+        restored_ao_tables = generate_restored_tables(results,
+                                                      restored_tables,
+                                                      restored_schema,
+                                                      restore_all)
 
         if len(restored_ao_tables) == 0:
             logger.info("No AO/CO tables restored, skipping statistics update...")
