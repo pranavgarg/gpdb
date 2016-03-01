@@ -3398,6 +3398,36 @@ Feature: Validate command line arguments
         And verify that there are "0" tuples in "bkdb" for table "public.ao_index_table"
         And verify that there are "4380" tuples in "bkdb" for table "public.ao_table"
 
+    @test
+    Scenario: Simple Full Backup with AO/CO statistics w/ filter schema
+        Given the test is initialized
+        And there is schema "schema_heap, schema_ao, testschema" exists in "bkdb"
+        And there is a "ao" table "public.ao_table" in "bkdb" with data
+        And there is a "ao" table "public.ao_index_table" in "bkdb" with data
+        And there is a "ao" table "schema_ao.ao_index_table" in "bkdb" with data
+        And there is a "ao" partition table "schema_ao.ao_part_table" in "bkdb" with data
+        And there is a "ao" partition table "testschema.ao_foo" in "bkdb" with data
+        And there is a "heap" table "schema_heap.heap_table" in "bkdb" with data
+        When the user runs "gpcrondump -a -x bkdb"
+        Then gpcrondump should return a return code of 0
+        And the timestamp from gpcrondump is stored
+        When the user runs gpdbrestore with the stored timestamp and options "--noaostats"
+        Then gpdbrestore should return a return code of 0
+        And verify that there are "0" tuples in "bkdb" for table "public.ao_index_table"
+        And verify that there are "0" tuples in "bkdb" for table "public.ao_table"
+        And verify that there are "0" tuples in "bkdb" for table "schema_ao.ao_index_table"
+        And verify that there are "0" tuples in "bkdb" for table "schema_ao.ao_part_table"
+        And verify that there are "0" tuples in "bkdb" for table "testschema.ao_foo"
+        And verify that there are "0" tuples in "bkdb" for table "schema_heap.heap_table"
+        When the user runs gpdbrestore with the stored timestamp and options "-S schema_ao -S testschema" without -e option
+        Then gpdbrestore should return a return code of 0
+        And verify that there are "0" tuples in "bkdb" for table "public.ao_index_table"
+        And verify that there are "0" tuples in "bkdb" for table "public.ao_table"
+        And verify that there are "4380" tuples in "bkdb" for table "schema_ao.ao_index_table"
+        And verify that there are "4380" tuples in "bkdb" for table "schema_ao.ao_part_table"
+        And verify that there are "4380" tuples in "bkdb" for table "testschema.ao_foo"
+        And verify that there are "0" tuples in "bkdb" for table "schema_heap.heap_table"
+
 
     # THIS SHOULD BE THE LAST TEST
     @backupfire
