@@ -3396,7 +3396,7 @@ Feature: Validate command line arguments
         When the user runs gpdbrestore with the stored timestamp and options "-T public.ao_table" without -e option
         Then gpdbrestore should return a return code of 0
         And verify that there are "0" tuples in "bkdb" for table "public.ao_index_table"
-        And verify that there are "8760" tuples in "bkdb" for table "public.ao_table"
+        And verify that there are "4380" tuples in "bkdb" for table "public.ao_table"
 
 
     # THIS SHOULD BE THE LAST TEST
