@@ -72,7 +72,6 @@ int			optreset;
 
 static ddp_inst_desc_t ddp_inst = DDP_INVALID_DESCRIPTOR;
 static ddp_conn_desc_t ddp_conn = DDP_INVALID_DESCRIPTOR;
-static char *DDP_SU_NAME = NULL;
 static int dd_boost_buf_size = 512*1024;
 static char *DEFAULT_BACKUP_DIRECTORY = NULL;
 
@@ -332,7 +331,7 @@ main(int argc, char **argv)
 		goto cleanup;
 	}
 
-    ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, &DDP_SU_NAME, createStorageUnit, &DEFAULT_BACKUP_DIRECTORY, dd_options->remote);
+    ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, dd_options->ddboost_storage_unit, createStorageUnit, &DEFAULT_BACKUP_DIRECTORY, dd_options->remote);
 
     if (ret)
     {
@@ -3256,17 +3255,13 @@ copyWithinDDboost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn, 
 	ddp_conn_desc_t remote_ddp_conn = DDP_INVALID_DESCRIPTOR;
 	ddp_conn_desc_t source_ddp_conn = DDP_INVALID_DESCRIPTOR;
 	ddp_conn_desc_t target_ddp_conn = DDP_INVALID_DESCRIPTOR;
-	char *remote_ddp_su_name = dd_options->ddboost_storage_unit;
 	char *remote_default_backup_directory = NULL;
 
 	pqsignal(SIGINT, Replication_CancellationHandler);
 
 	if (direction != COPY_WITHIN_SAME_DDBOOST)
 	{
-		int ret = initDDSystem(&ddp_inst, &remote_ddp_conn, &dd_client_info, &remote_ddp_su_name, false, &remote_default_backup_directory, true /*remote*/);
-
-		if (remote_ddp_su_name)
-			free(remote_ddp_su_name);
+		int ret = initDDSystem(&ddp_inst, &remote_ddp_conn, &dd_client_info, dd_options->ddboost_storage_unit, false, &remote_default_backup_directory, true /*remote*/);
 
 		if (remote_default_backup_directory)
 			free(remote_default_backup_directory);

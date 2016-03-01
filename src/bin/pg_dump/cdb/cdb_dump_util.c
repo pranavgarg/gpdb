@@ -1747,12 +1747,11 @@ _ddp_test_log(const void *session_ptr, const ddp_char_t *log_msg, ddp_severity_t
 }
 
 int
-initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_info_t *cl_info, char *ddp_su_name,
+initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_info_t *cl_info, char *storage_unit_name,
             bool createStorageUnit, char **default_backup_directory, bool remote)
 {
 	int err = DD_ERR_NONE;
 	unsigned int POOL_SIZE = DDBOOST_POOL_SIZE;
-	char *storage_unit_name = NULL;
 	char *dd_boost_username = NULL;
 	char *dd_boost_passwd = NULL;
 	char *dd_boost_hostname = NULL;
@@ -1772,14 +1771,6 @@ initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_in
 		mpp_err_msg("ERROR", "ddboost", "Parsing DDBoost login credentials failed\n");
 		return -1;
 	}
-
-	storage_unit_name = (char*)malloc(PATH_MAX);
-	if (storage_unit_name == NULL)
-	{
-		mpp_err_msg("ERROR", "ddboost", "Memory allocation failed during DDBoost initialization\n");
-		return -1;
-	}
-	sprintf(storage_unit_name, "%s", ddp_su_name);
 
 	if (*ddp_inst == DDP_INVALID_DESCRIPTOR)
 	{
