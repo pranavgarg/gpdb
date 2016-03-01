@@ -117,6 +117,7 @@ class GpCronDump(Operation):
         self.incremental = options.incremental
         self.timestamp_key = options.timestamp_key
         self.list_backup_files = options.list_backup_files
+        self.ddboost_storage_unit = options.ddboost_storage_unit
         self.list_filter_tables = options.list_filter_tables
 
         if options.local_dump_prefix:
@@ -226,6 +227,9 @@ class GpCronDump(Operation):
             self.free_space_percent = int(self.free_space_percent)
         else:
             self.free_space_percent = FREE_SPACE_PERCENT
+
+        if self.ddboost_storage_unit and not self.ddboost:
+            raise Excaption('Must specify --ddboost option together with the --ddboost-storage-unit')
 
         if self.ddboost:
             self.free_space_percent = None
@@ -872,7 +876,8 @@ class GpCronDump(Operation):
                                             netbackup_block_size = self.netbackup_block_size,
                                             netbackup_keyword = self.netbackup_keyword,
                                             incremental = self.incremental,
-                                            include_schema_file = schema_file).run()
+                                            include_schema_file = schema_file,
+                                            ddboost_storage_unit = self.ddboost_storage_unit).run()
 
                 post_dump_outcome = PostDumpDatabase(timestamp_start = dump_outcome['timestamp_start'],
                                                      compress = self.compress,
@@ -1550,6 +1555,8 @@ def create_parser():
 
     addTo.add_option('-u', dest='backup_dir', metavar="<BACKUPFILEDIR>",
                      help="Directory where backup files are placed [default: data directories]")
+    addTo.add_option('--ddboost-storage-unit', dest='ddboost_storage_unit', metavar="<DDBOOST STORAGE UNIT>",
+                     help="Storage unit where backup files are placed on the ddboost server[default: 'GPDB']")
     addTo.add_option('-y', dest='report_dir', metavar="<REPORTFILEDIR>",
                      help="DEPRECATED OPTION: Directory where report file is placed")
     addTo.add_option('-E', dest='encoding', metavar="<encoding>",

@@ -487,9 +487,9 @@ def get_backup_dir(master_datadir, backup_dir):
         return backup_dir
     return master_datadir
 
-def update_filter_file(dump_database, master_datadir, backup_dir, master_port, dump_dir, dump_prefix, ddboost=False, netbackup_service_host=None,
+def update_filter_file(dump_database, master_datadir, backup_dir, master_port, dump_dir, dump_prefix, ddboost=False, ddboost_storage_unit=None, netbackup_service_host=None,
                        netbackup_policy=None, netbackup_schedule=None, netbackup_block_size=None, netbackup_keyword=None):
-    filter_filename = get_filter_file(dump_database, master_datadir, backup_dir, dump_dir, dump_prefix, ddboost, netbackup_service_host, netbackup_block_size)
+    filter_filename = get_filter_file(dump_database, master_datadir, backup_dir, dump_dir, dump_prefix, ddboost, ddboost_storage_unit, netbackup_service_host, netbackup_block_size)
     if netbackup_service_host:
         restore_file_with_nbu(netbackup_service_host, netbackup_block_size, filter_filename)
     filter_tables = get_lines_from_file(filter_filename)
@@ -506,9 +506,9 @@ def update_filter_file(dump_database, master_datadir, backup_dir, master_port, d
     if netbackup_service_host:
         backup_file_with_nbu(netbackup_service_host, netbackup_policy, netbackup_schedule, netbackup_block_size, netbackup_keyword, filter_filename)
 
-def get_filter_file(dump_database, master_datadir, backup_dir, dump_dir, dump_prefix, ddboost=False, netbackup_service_host=None, netbackup_block_size=None):
+def get_filter_file(dump_database, master_datadir, backup_dir, dump_dir, dump_prefix, ddboost=False, ddboost_storage_unit=None, netbackup_service_host=None, netbackup_block_size=None):
     if netbackup_service_host is None:
-        timestamp = get_latest_full_dump_timestamp(dump_database, get_backup_dir(master_datadir, backup_dir), dump_dir, dump_prefix, ddboost)
+        timestamp = get_latest_full_dump_timestamp(dump_database, get_backup_dir(master_datadir, backup_dir), dump_dir, dump_prefix, ddboost, ddboost_storage_unit)
     else:
         if FULL_DUMP_TS_WITH_NBU is None:
             timestamp = get_latest_full_ts_with_nbu(dump_database, get_backup_dir(master_datadir, backup_dir), dump_prefix, netbackup_service_host, netbackup_block_size)
@@ -539,10 +539,10 @@ def update_filter_file_with_dirty_list(filter_file, dirty_tables):
 
         write_lines_to_file(filter_file, filter_list)
 
-def filter_dirty_tables(dirty_tables, dump_database, master_datadir, backup_dir, dump_dir, dump_prefix, ddboost=False,
+def filter_dirty_tables(dirty_tables, dump_database, master_datadir, backup_dir, dump_dir, dump_prefix, ddboost=False, ddboost_storage_unit=None,
                         netbackup_service_host=None, netbackup_block_size=None):
     if netbackup_service_host is None:
-        timestamp = get_latest_full_dump_timestamp(dump_database, get_backup_dir(master_datadir, backup_dir), dump_dir, dump_prefix, ddboost)
+        timestamp = get_latest_full_dump_timestamp(dump_database, get_backup_dir(master_datadir, backup_dir), dump_dir, dump_prefix, ddboost, ddboost_storage_unit)
     else:
         if FULL_DUMP_TS_WITH_NBU is None:
             timestamp = get_latest_full_ts_with_nbu(dump_database, get_backup_dir(master_datadir, backup_dir), dump_prefix, netbackup_service_host, netbackup_block_size)
@@ -550,7 +550,7 @@ def filter_dirty_tables(dirty_tables, dump_database, master_datadir, backup_dir,
             timestamp = FULL_DUMP_TS_WITH_NBU
 
     schema_filename = generate_schema_filename(master_datadir, backup_dir, dump_dir, dump_prefix, timestamp, ddboost)
-    filter_file = get_filter_file(dump_database, master_datadir, backup_dir, dump_dir, dump_prefix, ddboost, netbackup_service_host, netbackup_block_size)
+    filter_file = get_filter_file(dump_database, master_datadir, backup_dir, dump_dir, dump_prefix, ddboost, ddboost_storage_unit, netbackup_service_host, netbackup_block_size)
     if filter_file:
         tables_to_filter = get_lines_from_file(filter_file)
         dirty_copy = dirty_tables[:]
@@ -712,7 +712,7 @@ class DumpDatabase(Operation):
                  exclude_dump_tables_file, backup_dir, free_space_percent, compress, clear_catalog_dumps, encoding,
                  output_options, batch_default, master_datadir, master_port, dump_dir, dump_prefix, ddboost,
                  netbackup_service_host, netbackup_policy, netbackup_schedule, netbackup_block_size, netbackup_keyword,
-                 incremental=False, include_schema_file=None):
+                 incremental=False, include_schema_file=None, ddboost_storage_unit=None):
         self.dump_database = dump_database
         self.dump_schema = dump_schema
         self.include_dump_tables = include_dump_tables
@@ -732,6 +732,7 @@ class DumpDatabase(Operation):
         self.dump_prefix = dump_prefix
         self.include_schema_file = include_schema_file
         self.ddboost = ddboost
+        self.ddboost_storage_unit = ddboost_storage_unit
         self.incremental = incremental
         self.netbackup_service_host = netbackup_service_host
         self.netbackup_policy = netbackup_policy
@@ -764,10 +765,11 @@ class DumpDatabase(Operation):
         self.include_dump_tables_file = formatSQLString(rel_file=self.include_dump_tables_file, isTableName=True)
         self.exclude_dump_tables_file = formatSQLString(rel_file=self.exclude_dump_tables_file, isTableName=True)
         self.include_schema_file = formatSQLString(rel_file=self.include_schema_file, isTableName=False)
-
+        
+        #here
         if (self.incremental and self.dump_prefix and
             get_filter_file(self.dump_database, self.master_datadir, self.backup_dir, self.dump_dir,
-                            self.dump_prefix, self.ddboost, self.netbackup_service_host)):
+                            self.dump_prefix, self.ddboost, self.ddboost_storage_unit, self.netbackup_service_host)):
 
             filtered_dump_line = self.create_filtered_dump_string(getUserName(), DUMP_DATE, TIMESTAMP_KEY)
             (start, end, rc) = self.perform_dump('Dump process', filtered_dump_line)
