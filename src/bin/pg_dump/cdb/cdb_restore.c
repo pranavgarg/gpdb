@@ -375,7 +375,7 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 
 #ifdef USE_DDBOOST
                 {"ddboost", no_argument, NULL, 10},
-                {"ddboost_storage_unit_name", no_argument, NULL, 19},
+                {"ddboost_storage_unit_name", required_argument, NULL, 19},
 #endif
 
 		{"gp-f", required_argument, NULL, 11},

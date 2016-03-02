@@ -828,7 +828,7 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 
 #ifdef USE_DDBOOST
 		{"ddboost", no_argument, NULL, 6},
-		{"ddboost_storage_unit_name", no_argument, NULL, 21},
+		{"ddboost_storage_unit_name", required_argument, NULL, 21},
 #endif
 		{"table-file", required_argument, NULL, 7},
 		{"exclude-table-file", required_argument, NULL, 8},
