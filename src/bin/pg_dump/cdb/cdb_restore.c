@@ -739,7 +739,7 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 				dd_boost_enabled = 1;
 				break;
 			case 19:
-				pInputOpts->pszPassThroughParms = addPassThroughLongParm("ddboost_storage_unit_name", NULL, pInputOpts->pszPassThroughParms);
+				pInputOpts->pszPassThroughParms = addPassThroughLongParm("ddboost_storage_unit_name", optarg, pInputOpts->pszPassThroughParms);
 				break;
 #endif
 			case 11:

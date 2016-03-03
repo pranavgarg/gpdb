@@ -243,7 +243,7 @@ main(int argc, char **argv)
 		{"netbackup-block-size", required_argument, NULL, 16},
 		{"change-schema-file", required_argument, NULL, 17},
 		{"schema-level-file", required_argument, NULL, 18},
-		{"ddboost_storage_unit_name", no_argument, NULL, 19},
+		{"ddboost_storage_unit_name",required_argument, NULL, 19},
 		{NULL, 0, NULL, 0}
 	};
 
