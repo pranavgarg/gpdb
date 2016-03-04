@@ -847,7 +847,7 @@ CREATE DATABASE monkey WITH TEMPLATE = template0 ENCODING = 'UTF8' OWNER = thisg
     def test_build_gpdbrestore_cmd_line_00(self, mock1, mock2):
         ts = '20121212121212'
         dump_prefix = 'bar_'
-        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --prefix=bar'
+        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --no-validate-table-name --prefix=bar'
         restore_line = _build_gpdbrestore_cmd_line(ts, 'foo', None, None, None, dump_prefix)
         self.assertEqual(restore_line, expected_output)
 
@@ -856,7 +856,7 @@ CREATE DATABASE monkey WITH TEMPLATE = template0 ENCODING = 'UTF8' OWNER = thisg
     def test_redirected_restore_build_gpdbrestore_cmd_line_00(self, mock1, mock2):
         ts = '20121212121212'
         dump_prefix = 'bar_'
-        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --prefix=bar --redirect="redb"'
+        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --no-validate-table-name --prefix=bar --redirect="redb"'
         restore_line = _build_gpdbrestore_cmd_line(ts, 'foo', None, 'redb', None, dump_prefix)
         self.assertEqual(restore_line, expected_output)
 
@@ -865,7 +865,7 @@ CREATE DATABASE monkey WITH TEMPLATE = template0 ENCODING = 'UTF8' OWNER = thisg
     def test_build_gpdbrestore_cmd_line_01(self, mock1, mock2):
         ts = '20121212121212'
         dump_prefix = 'bar_'
-        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats -u /tmp --prefix=bar'
+        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --no-validate-table-name -u /tmp --prefix=bar'
         restore_line = _build_gpdbrestore_cmd_line(ts, 'foo', '/tmp', None, None, dump_prefix)
         self.assertEqual(restore_line, expected_output)
 
@@ -875,7 +875,7 @@ CREATE DATABASE monkey WITH TEMPLATE = template0 ENCODING = 'UTF8' OWNER = thisg
         ts = '20121212121212'
         dump_prefix = 'bar_'
         report_status_dir = '/tmp'
-        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --prefix=bar --report-status-dir=/tmp'
+        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --no-validate-table-name --prefix=bar --report-status-dir=/tmp'
         restore_line = _build_gpdbrestore_cmd_line(ts, 'foo', None, None, '/tmp', dump_prefix)
         self.assertEqual(restore_line, expected_output)
 
@@ -884,7 +884,7 @@ CREATE DATABASE monkey WITH TEMPLATE = template0 ENCODING = 'UTF8' OWNER = thisg
     def test_build_gpdbrestore_cmd_line_03(self, mock1, mock2):
         ts = '20121212121212'
         dump_prefix = 'bar_'
-        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --prefix=bar --report-status-dir=/tmp --ddboost'
+        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --no-validate-table-name --prefix=bar --report-status-dir=/tmp --ddboost'
         ddboost = True
         restore_line = _build_gpdbrestore_cmd_line(ts, 'foo', None, None, '/tmp', dump_prefix, ddboost)
         self.assertEqual(restore_line, expected_output)
@@ -894,7 +894,7 @@ CREATE DATABASE monkey WITH TEMPLATE = template0 ENCODING = 'UTF8' OWNER = thisg
     def test_redirected_restore_build_gpdbrestore_cmd_line_01(self, mock1, mock2):
         ts = '20121212121212'
         dump_prefix = 'bar_'
-        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats -u /tmp --prefix=bar --redirect="redb"'
+        expected_output = 'gpdbrestore -t 20121212121212 --table-file foo -a -v --noplan --noanalyze --noaostats --no-validate-table-name -u /tmp --prefix=bar --redirect="redb"'
         restore_line = _build_gpdbrestore_cmd_line(ts, 'foo', '/tmp', 'redb', None, dump_prefix)
         self.assertEqual(restore_line, expected_output)
 
@@ -1355,35 +1355,31 @@ CREATE DATABASE monkey WITH TEMPLATE = template0 ENCODING = 'UTF8' OWNER = thisg
     def test_validate_tablenames_00(self):
         table_list = ['publicao1', 'public.ao2']
         with self.assertRaisesRegexp(Exception, 'No schema name supplied'):
-            validate_tablenames(table_list, "/data", None, "db_dumps", "", "20160101010101")
+            validate_tablenames(table_list, None, None)
 
-    @patch('gppylib.operations.restore.get_lines_from_zipped_file', return_value = ['-- Name: ao1; Type: TABLE; Schema: public; Owner', '-- Name: ao2; Type: TABLE; Schema: public; Owner'])
-    @patch('os.path.isfile', return_value = True)
-    def test_validate_tablenames_01(self, mock, mock1):
+    def test_validate_tablenames_01(self):
         table_list = ['public.ao1', 'public.ao2']
-        validate_tablenames(table_list, "/data", None, "db_dumps", "", "20160101010101")
+        dumped_tables = [('public', 'ao1', 'gpadmin'), ('public', 'ao2', 'gpadmin')]
+        validate_tablenames(table_list, [], dumped_tables)
 
-    @patch('gppylib.operations.restore.get_lines_from_zipped_file', return_value = [])
-    @patch('os.path.isfile', return_value = True)
-    def test_validate_tablenames_02(self, mock, mock1):
+    def test_validate_tablenames_02(self):
         table_list = []
         schema_list = []
-        validate_tablenames(table_list, "/data", None, "db_dumps", "", "20160101010101", schema_list)
+        dumped_tables = []
+        validate_tablenames(table_list, schema_list, dumped_tables)
 
-    @patch('gppylib.operations.restore.get_lines_from_zipped_file', return_value = ['-- Name: ao1; Type: TABLE; Schema: public; Owner'])
-    @patch('os.path.isfile', return_value = True)
-    def test_validate_tablenames_03(self, mock, mock1):
+    def test_validate_tablenames_03(self):
         table_list = ['public.ao1', 'public.ao1']
-        resolved_list, _ = validate_tablenames(table_list, "/data", None, "db_dumps", "", "20160101010101", [])
+        dumped_tables = [('public', 'ao1', '')]
+        resolved_list, _ = validate_tablenames(table_list, [], dumped_tables)
         self.assertEqual(resolved_list, ['public.ao1'])
 
-    @patch('gppylib.operations.restore.get_lines_from_zipped_file', return_value = [r'-- Name: ao1; Type: TABLE; Schema: schema; Owner', r'-- Name:  `"@#$%^&( )_|:;<>?/-+={}[]*1Aa ; Type: TABLE; Schema:  `"@#$%^&( )_|:;<>?/-+={}[]*1Aa ; Owner'])
-    @patch('os.path.isfile', return_value = True)
-    def test_validate_tablenames_04(self, mock, mock1):
-        table_list = [r' `"@#$%^&( )_|:;<>?/-+={}[]*1Aa . `"@#$%^&( )_|:;<>?/-+={}[]*1Aa ', 'schema.ao1']
-        schema_list = ['schema', 'schema']
-        resolved_table_list, resolved_schema_list = validate_tablenames(table_list, "/data", None, "db_dumps", "", "20160101010101", schema_list)
-        self.assertEqual(resolved_table_list, [r' `"@#$%^&( )_|:;<>?/-+={}[]*1Aa . `"@#$%^&( )_|:;<>?/-+={}[]*1Aa '])
+    def test_validate_tablenames_04(self):
+        table_list = [' `"@#$%^&( )_|:;<>?/-+={}[]*1Aa . `"@#$%^&( )_|:;<>?/-+={}[]*1Aa ', 'schema.ao1']
+        schema_list = ['schema']
+        dumped_tables = [('schema', 'ao1', ''), (' `"@#$%^&( )_|:;<>?/-+={}[]*1Aa ', ' `"@#$%^&( )_|:;<>?/-+={}[]*1Aa ', '')]
+        resolved_table_list, resolved_schema_list = validate_tablenames(table_list, schema_list, dumped_tables)
+        self.assertEqual(resolved_table_list, [' `"@#$%^&( )_|:;<>?/-+={}[]*1Aa . `"@#$%^&( )_|:;<>?/-+={}[]*1Aa '])
         self.assertEqual(resolved_schema_list, ['schema'])
 
     def test_get_restore_table_list_00(self):
