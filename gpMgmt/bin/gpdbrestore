@@ -7,7 +7,7 @@ from gppylib.mainUtils import addMasterDirectoryOptionForSingleClusterProgram, a
 import fnmatch
 import os
 import sys
-from optparse import OptionGroup, OptionValueError
+from optparse import OptionGroup, OptionValueError, SUPPRESS_HELP
 from pygresql import pg
 
 try:
@@ -89,6 +89,7 @@ class GpdbRestore(Operation):
         self.restore_stats = options.restore_stats
         self.metadata_only = options.metadata_only
         self.schema_level_restore_list = options.restore_schemas
+        self.no_validate_table_name = options.no_validate_table_name
 
         if self.restore_stats:
             self.no_analyze = True
@@ -380,7 +381,8 @@ class GpdbRestore(Operation):
         pgconf_dict = pgconf.readfile(datadir + "/postgresql.conf")
         return pgconf_dict.int('port')
 
-    def _list_dump_tables(self):
+
+    def get_all_dump_tables(self):
         dump_tables = GetDumpTables(master_datadir = self.master_datadir,
                                     backup_dir = self.backup_dir,
                                     restore_timestamp = self.db_timestamp,
@@ -388,6 +390,10 @@ class GpdbRestore(Operation):
                                     dump_prefix = self.dump_prefix,
                                     ddboost = self.ddboost,
                                     netbackup_service_host = self.netbackup_service_host).run()
+        return dump_tables
+
+    def _list_dump_tables(self):
+        dump_tables = self.get_all_dump_tables()
 
         logger.info("--------------------------------------------------------------------")
         logger.info("List of database tables for dump file with time stamp %s" % self.db_timestamp)
@@ -441,9 +447,11 @@ class GpdbRestore(Operation):
                 raise ExceptionNoStackTraceNeeded("Database %s does not exist and -e option not supplied" % restore_db)
 
         table_counts = []
-        if len(self.restore_tables) > 0 or len(self.schema_level_restore_list) > 0:
-            self.restore_tables, self.schema_level_restore_list = validate_tablenames(self.restore_tables, self.master_datadir, self.backup_dir, self.dump_dir,
-                                                                                      self.dump_prefix, restore_timestamp, self.schema_level_restore_list)
+        if not self.no_validate_table_name and (len(self.restore_tables) > 0 or len(self.schema_level_restore_list) > 0):
+            dump_tables = self.get_all_dump_tables()
+            self.restore_tables, self.schema_level_restore_list = validate_tablenames(self.restore_tables,
+                                                                                      self.schema_level_restore_list,
+                                                                                      dump_tables)
 
         if not self.db_host_path and not self.ddboost:
             report_filename = generate_report_filename(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, restore_timestamp)
@@ -652,6 +660,8 @@ def create_parser():
                      help="Different schema name to which tables will be restored")
     addTo.add_option('--restore-stats', dest='restore_stats', action="callback", callback=restore_stats_callback,
                      help="Restore database statistics. Analysis is skipped as if the --noanalyze flag were set.")
+    # --no-validate-table-name option used only for separating table restore and data restore phases, set as hidden
+    addTo.add_option('--no-validate-table-name', action='store_true', dest='no_validate_table_name', default=False, help=SUPPRESS_HELP)
     parser.add_option_group(addTo)
 
     # For Incremental Restore

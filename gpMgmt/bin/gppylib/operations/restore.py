@@ -396,7 +396,7 @@ def statistics_file_dumped(master_datadir, backup_dir, dump_dir, dump_prefix, re
 
 def _build_gpdbrestore_cmd_line(ts, table_file, backup_dir, redirected_restore_db, report_status_dir, dump_prefix, ddboost=False, netbackup_service_host=None,
                                 netbackup_block_size=None, change_schema=None, schema_level_restore_file=None):
-    cmd = 'gpdbrestore -t %s --table-file %s -a -v --noplan --noanalyze --noaostats' % (ts, table_file)
+    cmd = 'gpdbrestore -t %s --table-file %s -a -v --noplan --noanalyze --noaostats --no-validate-table-name' % (ts, table_file)
     if backup_dir is not None:
         cmd += " -u %s" % backup_dir
     if dump_prefix:
@@ -1168,13 +1168,18 @@ class ValidateSegments(Operation):
                 if not exists:
                     raise ExceptionNoStackTraceNeeded("No dump file on %s at %s" % (seg.getSegmentHostName(), path))
 
-def validate_tablenames(table_list, master_data_dir, backup_dir, dump_dir, dump_prefix, timestamp, schema_level_restore_list=None):
+def validate_tablenames(table_list, schema_level_restore_list=None, dumped_tables=None):
     """
     verify table list, and schema list, resolve duplicates and overlaps
     """
 
     restore_table_list = []
     table_set = set()
+    dumped_table_names = []
+    unmatched_table_names = []
+
+    if dumped_tables:
+        dumped_table_names = [schema + '.' + table for (schema, table, _) in dumped_tables]
 
     # validate special characters
     check_funny_chars_in_names(schema_level_restore_list, is_full_qualified_name = False)
@@ -1193,24 +1198,12 @@ def validate_tablenames(table_list, master_data_dir, backup_dir, dump_dir, dump_
             table_set.add((schema, table))
             restore_table_list.append(restore_table)
 
-    # validate tables
-    filename = generate_metadata_filename(master_data_dir, backup_dir, dump_dir, dump_prefix, timestamp)
-
-    dumped_tables = []
-    lines = get_lines_from_zipped_file(filename)
-    for line in lines:
-        pattern = "-- Name: (.+?); Type: (.+?); Schema: (.+?); Owner"
-        match = search(pattern, line)
-        if match is None:
-            continue
-        name, type, schema = match.group(1), match.group(2), match.group(3)
-        if type == "TABLE":
-            schema = pg.escape_string(schema)
-            name = pg.escape_string(name)
-            dumped_tables.append('%s.%s' % (schema, name))
     for table in restore_table_list:
-        if table not in dumped_tables:
-            raise Exception("Table %s not found in backup" % table)
+        if table not in dumped_table_names:
+            unmatched_table_names.append(table)
+
+    if len(unmatched_table_names) > 0:
+        raise Exception("Tables %s not found in backup" % unmatched_table_names)
 
     return restore_table_list, schema_level_restore_list 
 
