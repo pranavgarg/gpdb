@@ -27,7 +27,7 @@ from gppylib.operations.backup_utils import check_backup_type, check_dir_writabl
                                             get_full_timestamp_for_incremental_with_nbu, get_lines_from_file, restore_file_with_nbu, run_pool_command, scp_file_to_hosts, \
                                             verify_lines_in_file, write_lines_to_file, split_fqn, escapeDoubleQuoteInSQLString, get_dbname_from_cdatabaseline, \
                                             checkAndRemoveEnclosingDoubleQuote, checkAndAddEnclosingDoubleQuote, removeEscapingDoubleQuoteInSQLString, \
-                                            create_temp_file_with_schemas, check_funny_chars_in_names, remove_file_on_segments
+                                            create_temp_file_with_schemas, check_funny_chars_in_names, remove_file_on_segments, get_restore_dir
 from gppylib.operations.unix import CheckFile, CheckRemoteDir, MakeRemoteDir, CheckRemotePath
 from re import compile, search, sub
 
@@ -79,12 +79,6 @@ def update_ao_statistics(master_port, dbname, restored_tables):
     except Exception as e:
         logger.info("Error updating ao statistics after restore")
         raise e
-
-def get_restore_dir(data_dir, backup_dir):
-    if backup_dir is not None:
-        return backup_dir
-    else:
-        return data_dir
 
 def get_restore_tables_from_table_file(table_file):
     if not os.path.isfile(table_file):
@@ -153,15 +147,7 @@ def create_restore_plan(master_datadir, backup_dir, dump_dir, dump_prefix, db_ti
 
     table_set_from_metadata_file = [schema + '.' + table for schema, table in dump_tables]
 
-    if ddboost:
-        full_timestamp = get_full_timestamp_for_incremental(master_datadir, dump_dir, dump_prefix, db_timestamp)
-    elif netbackup_service_host:
-        full_timestamp = get_full_timestamp_for_incremental_with_nbu(dump_prefix, db_timestamp, netbackup_service_host, netbackup_block_size)
-    else:
-        full_timestamp = get_full_timestamp_for_incremental(get_restore_dir(master_datadir, backup_dir), dump_dir, dump_prefix, db_timestamp)
-
-    if not full_timestamp:
-        raise Exception("Could not locate fullbackup associated with ts '%s'. Either increments file or fullback is missing." % db_timestamp)
+    full_timestamp = get_full_timestamp_for_incremental(master_datadir, dump_dir, dump_prefix, db_timestamp, backup_dir, ddboost, netbackup_service_host, netbackup_block_size)
 
     incremental_restore_timestamps = get_incremental_restore_timestamps(master_datadir, backup_dir, dump_dir, dump_prefix, full_timestamp, db_timestamp)
 
@@ -1125,7 +1111,18 @@ class ValidateTimestamp(Operation):
                                                       .format(ucfile=uncompressed_file))
         return compress
 
+    def validate_timestamp_format(self):
+        if not self.candidate_timestamp:
+            raise Exception('Timestamp must not be None.')
+        else:
+            # timestamp has to be a string of 14 digits(YYYYMMDDHHMMSS)
+            timestamp_pattern = compile(r'\d{14}')
+            if not search(timestamp_pattern, self.candidate_timestamp):
+                raise Exception('Invalid timestamp specified, please specify in the following format: YYYYMMDDHHMMSS.')
+
     def execute(self):
+        self.validate_timestamp_format()
+
         path = os.path.join(get_restore_dir(self.master_datadir, self.backup_dir), self.dump_dir, self.candidate_timestamp[0:8])
         createdb_file = generate_createdb_filename(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.candidate_timestamp, self.ddboost)
         if not CheckFile(createdb_file).run():

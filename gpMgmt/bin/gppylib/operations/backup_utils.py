@@ -517,17 +517,30 @@ def get_timestamp_from_increments_filename(filename, dump_prefix):
         raise Exception("Invalid increments file '%s' passed to get_timestamp_from_increments_filename" % filename)
     return parts[-2].strip()
 
-def get_full_timestamp_for_incremental(backup_dir, dump_dir, dump_prefix, incremental_timestamp):
-    pattern = '%s/%s/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]/%sgp_dump_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_increments' % (backup_dir, dump_dir, dump_prefix)
-    increments_files = glob.glob(pattern)
+def get_full_timestamp_for_incremental(master_datadir, dump_dir, dump_prefix, incremental_timestamp, backup_dir, ddboost, netbackup_service_host, netbackup_block_size):
+    full_timestamp = None
+    if netbackup_service_host:
+        full_timestamp = get_full_timestamp_for_incremental_with_nbu(dump_prefix, incremental_timestamp, netbackup_service_host, netbackup_block_size)
+    else:
+        if ddboost:
+            backup_dir = master_datadir
+        else:
+            backup_dir = get_restore_dir(master_datadir, backup_dir)
 
-    for increments_file in increments_files:
-        increment_ts = get_lines_from_file(increments_file)
-        if incremental_timestamp in increment_ts:
-            full_timestamp = get_timestamp_from_increments_filename(increments_file, dump_prefix)
-            return full_timestamp
+        pattern = '%s/%s/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]/%sgp_dump_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_increments' % (backup_dir, dump_dir, dump_prefix)
+        increments_files = glob.glob(pattern)
 
-    return None
+        for increments_file in increments_files:
+            increment_ts = get_lines_from_file(increments_file)
+            if incremental_timestamp in increment_ts:
+                full_timestamp = get_timestamp_from_increments_filename(increments_file, dump_prefix)
+                break
+
+    if not full_timestamp:
+        raise Exception("Could not locate fullbackup associated with ts '%s'. Either increments file or fullback is missing." % incremental_timestamp)
+
+    return full_timestamp
+
 
 # backup_dir will be either MDD or some other directory depending on call
 def get_latest_full_dump_timestamp(dbname, backup_dir, dump_dir, dump_prefix, ddboost=False):
@@ -801,3 +814,9 @@ def remove_file_on_segments(master_port, filename, batch_default=DEFAULT_NUM_WOR
         run_pool_command(addresses, cmd, batch_default, check_results=False)
     except Exception as e:
         logger.error("cleaning up file failed: %s" % e.__str__())
+
+def get_restore_dir(data_dir, backup_dir):
+    if backup_dir is not None:
+        return backup_dir
+    else:
+        return data_dir

@@ -25,13 +25,15 @@ try:
     from gppylib.gpparseopts import OptParser, OptChecker
     from gppylib.operations import Operation
     from gppylib.operations.backup_utils import check_dir_writable, generate_createdb_prefix, generate_master_dbdump_prefix, \
-                                                generate_report_filename, get_lines_from_file, check_schema_exists, check_funny_chars_in_names
+                                                generate_report_filename, get_lines_from_file, check_schema_exists, check_funny_chars_in_names, \
+                                                get_full_timestamp_for_incremental
     from gppylib.operations.restore import GetDbName, GetDumpTables, RecoverRemoteDumps, RestoreDatabase, ValidateTimestamp, \
                                            config_files_dumped, create_restore_plan, get_restore_dir, get_restore_tables_from_table_file, \
                                            global_file_dumped, is_begin_incremental_run, is_incremental_restore, restore_cdatabase_file_with_nbu, \
                                            restore_config_files_with_nbu, restore_global_file_with_nbu, restore_statistics_file_with_nbu, \
                                            restore_increments_file_with_nbu, restore_partition_list_file_with_nbu, restore_report_file_with_nbu, \
-                                           restore_state_files_with_nbu, statistics_file_dumped, truncate_restore_tables, validate_tablenames
+                                           restore_state_files_with_nbu, statistics_file_dumped, truncate_restore_tables, validate_tablenames, \
+                                           get_incremental_restore_timestamps
     from gppylib.operations.utils import DEFAULT_NUM_WORKERS
     from gppylib.operations.unix import CheckFile, CheckRemoteFile, ListFilesByPattern, ListRemoteFilesByPattern
 except ImportError, e:
@@ -382,18 +384,46 @@ class GpdbRestore(Operation):
         return pgconf_dict.int('port')
 
 
-    def get_all_dump_tables(self):
-        dump_tables = GetDumpTables(master_datadir = self.master_datadir,
+    def get_all_dumped_tables(self, restore_timestamp, need_all_timestamps = False):
+        """
+            need_all_timestamps: if False, only extract the dumped tables for the specified timestamp
+            If we do restore and did not supply the --noplan option, get all timestamps begining with latest full timestamp
+            Otherwise, just get dumped tables for the specified timestamp
+        """
+        all_dumped_tables = set()
+        all_timestamps = set()
+        all_timestamps.add(restore_timestamp)
+        if is_begin_incremental_run(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, restore_timestamp, self.no_plan):
+            if need_all_timestamps:
+                full_timestamp = get_full_timestamp_for_incremental(self.master_datadir, self.dump_dir, self.dump_prefix, 
+                                                                    restore_timestamp, self.backup_dir, self.ddboost,
+                                                                    self.netbackup_service_host, self.netbackup_block_size)
+
+                incremental_restore_timestamps = get_incremental_restore_timestamps(self.master_datadir, self.backup_dir, self.dump_dir,
+                                                                                    self.dump_prefix, full_timestamp, restore_timestamp)
+
+                all_timestamps.add(full_timestamp)
+                all_timestamps |= set(incremental_restore_timestamps)
+
+        logger.info('All timestamps are %s' % all_timestamps)
+
+        for ts in all_timestamps:
+            dumped_tables = GetDumpTables(master_datadir = self.master_datadir,
                                     backup_dir = self.backup_dir,
-                                    restore_timestamp = self.db_timestamp,
+                                    restore_timestamp = restore_timestamp,
                                     dump_dir = self.dump_dir,
                                     dump_prefix = self.dump_prefix,
                                     ddboost = self.ddboost,
                                     netbackup_service_host = self.netbackup_service_host).run()
-        return dump_tables
+            all_dumped_tables |= set(dumped_tables)
+
+        return all_dumped_tables
 
     def _list_dump_tables(self):
-        dump_tables = self.get_all_dump_tables()
+        """
+           Only list dumped tables for specified timestamp, this is specified through the -t option along with the -L option
+        """
+        dump_tables = self.get_all_dumped_tables(self.db_timestamp, need_all_timestamps=False)
 
         logger.info("--------------------------------------------------------------------")
         logger.info("List of database tables for dump file with time stamp %s" % self.db_timestamp)
@@ -448,7 +478,7 @@ class GpdbRestore(Operation):
 
         table_counts = []
         if not self.no_validate_table_name and (len(self.restore_tables) > 0 or len(self.schema_level_restore_list) > 0):
-            dump_tables = self.get_all_dump_tables()
+            dump_tables = self.get_all_dumped_tables(restore_timestamp, need_all_timestamps=True)
             self.restore_tables, self.schema_level_restore_list = validate_tablenames(self.restore_tables,
                                                                                       self.schema_level_restore_list,
                                                                                       dump_tables)
@@ -466,6 +496,7 @@ class GpdbRestore(Operation):
                 'table_counts': table_counts}
 
     def _validate_db_date_dir(self):
+        logger.info('from _validate_db_date_dir ==================')
         root = os.path.join(get_restore_dir(self.master_datadir, self.backup_dir), self.dump_dir, self.db_date_dir)
         if not os.path.isdir(root):
             raise ExceptionNoStackTraceNeeded("Directory %s does not exist" % root)
@@ -605,7 +636,7 @@ def restore_stats_callback(option, opt_str, value, parser):
 
 def create_parser():
     parser = OptParser(option_class=OptChecker,
-                       version='%prog version $Revision$',
+                       version='%prog version 4.3.99.00 build 68087',
                        description="Restores a Greenplum database or tables from a dumpset generated by gpdbdump")
 
     parser.setHelp([])                      # TODO: make gpparseopts do this
