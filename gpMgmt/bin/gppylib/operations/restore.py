@@ -4,6 +4,7 @@ import os
 import shutil
 import socket
 import time
+import __builtin__
 
 from pygresql import pg
 from gppylib import gplog
@@ -27,7 +28,8 @@ from gppylib.operations.backup_utils import check_backup_type, check_dir_writabl
                                             get_full_timestamp_for_incremental_with_nbu, get_lines_from_file, restore_file_with_nbu, run_pool_command, scp_file_to_hosts, \
                                             verify_lines_in_file, write_lines_to_file, split_fqn, escapeDoubleQuoteInSQLString, get_dbname_from_cdatabaseline, \
                                             checkAndRemoveEnclosingDoubleQuote, checkAndAddEnclosingDoubleQuote, removeEscapingDoubleQuoteInSQLString, \
-                                            create_temp_file_with_schemas, check_funny_chars_in_names, remove_file_on_segments, get_restore_dir
+                                            create_temp_file_with_schemas, check_funny_chars_in_names, remove_file_on_segments, get_restore_dir, \
+                                            get_table_info, COMMENT_EXPR
 from gppylib.operations.unix import CheckFile, CheckRemoteDir, MakeRemoteDir, CheckRemotePath
 from re import compile, search, sub
 
@@ -45,7 +47,7 @@ POST_DATA_SUFFIX = '_post_data'
 # TODO: use CLI-agnostic custom exceptions instead of ExceptionNoStackTraceNeeded
 
 def update_ao_stat_func(conn, ao_schema, ao_table, counter, batch_size):
-    qry = "SELECT * FROM gp_update_ao_master_stats('%s.%s')" % (pg.escape_string(escapeDoubleQuoteInSQLString(ao_schema)), 
+    qry = "SELECT * FROM gp_update_ao_master_stats('%s.%s')" % (pg.escape_string(escapeDoubleQuoteInSQLString(ao_schema)),
                                                                 pg.escape_string(escapeDoubleQuoteInSQLString(ao_table)))
     rows = execSQLForSingleton(conn, qry)
     if counter % batch_size == 0:
@@ -834,7 +836,7 @@ class RestoreDatabase(Operation):
 
             logger.info("Dropping Database %s" % restore_db)
             if count == 1:
-                cmd = Command(name='drop database %s' % restore_db, 
+                cmd = Command(name='drop database %s' % restore_db,
                               cmdStr='dropdb %s -p %s' % (checkAndAddEnclosingDoubleQuote(shellEscape(restore_db)), master_port))
                 cmd.run(validateAfter=True)
             logger.info("Dropped Database %s" % restore_db)
@@ -964,7 +966,7 @@ class RestoreDatabase(Operation):
         return restore_line
 
     def _build_post_data_schema_only_restore_line(self, restore_timestamp, restore_db, compress, master_port,
-                                                  table_filter_file, full_restore_with_filter, 
+                                                  table_filter_file, full_restore_with_filter,
                                                   change_schema_file=None, schema_level_restore_file=None):
         user = getpass.getuser()
         hostname = socket.gethostname()    # TODO: can this just be localhost? bash was using `hostname`
@@ -1009,7 +1011,7 @@ class RestoreDatabase(Operation):
         return restore_line
 
     def _build_schema_only_restore_line(self, restore_timestamp, restore_db, compress, master_port,
-                                        metadata_filename, table_filter_file, full_restore_with_filter, 
+                                        metadata_filename, table_filter_file, full_restore_with_filter,
                                         change_schema_file=None, schema_level_restore_file=None):
         user = getpass.getuser()
         hostname = socket.gethostname()    # TODO: can this just be localhost? bash was using `hostname`
@@ -1202,7 +1204,7 @@ def validate_tablenames(table_list, schema_level_restore_list=None, dumped_table
     if len(unmatched_table_names) > 0:
         raise Exception("Tables %s not found in backup" % unmatched_table_names)
 
-    return restore_table_list, schema_level_restore_list 
+    return restore_table_list, schema_level_restore_list
 
 class ValidateRestoreTables(Operation):
     def __init__(self, restore_tables, restore_db, master_port):
@@ -1436,25 +1438,14 @@ class GetDumpTables(Operation):
                     line = f.readline()
                     if not line:
                         break
-                    if line.startswith("SET search_path = "):
-                        line = line[len("SET search_path = ") : ]
-                        if ", pg_catalog;" in line:
-                            schema = line[ : line.index(", pg_catalog;")]
-                        else:
-                            schema = "pg_catalog"
-                    elif line.startswith("-- Data for Name: "):
-                        owner = line[line.index("; Owner: ") + 9 : ].rstrip()
-                    elif line.startswith("COPY "):
-                        table = line[5:]
-                        if table.rstrip().endswith(") FROM stdin;"):
-                            if table.startswith("\""):
-                                table = table[: table.index("\" (") + 1]
-                            else:
-                                table = table[: table.index(" (")]
-                        else:
-                            table = table[: table.index(" FROM stdin;")]
-                        table = table.rstrip()
-                        ret.append((schema, table, owner))
+
+                    """ We are not doing any quoting for special characters
+                        client is responsible for verifying
+                    """
+                    if line.startswith(COMMENT_EXPR):
+                        table, type, schema, owner = get_table_info(line, COMMENT_EXPR)
+                        if type == 'TABLE':
+                            ret.append((schema, table, owner))
             finally:
                 if f is not None:
                     f.close()

@@ -13,6 +13,12 @@ from pygresql import pg
 from gppylib.operations.utils import DEFAULT_NUM_WORKERS
 import gzip
 
+COMMENT_EXPR = '-- Name: '
+TYPE_EXPR = '; Type: '
+SCHEMA_EXPR = '; Schema: '
+OWNER_EXPR = '; Owner: '
+TABLESPACE_EXPR = '; Tablespace: '
+
 logger = gplog.get_default_logger()
 
 def expand_partitions_and_populate_filter_file(dbname, partition_list, file_prefix):
@@ -43,14 +49,14 @@ def list_to_quoted_string(filter_tables):
 
 def convert_parents_to_leafs(dbname, parents):
     partition_leaves_sql = """
-                           SELECT x.partitionschemaname || '.' || x.partitiontablename 
+                           SELECT x.partitionschemaname || '.' || x.partitiontablename
                            FROM (
-                                SELECT distinct schemaname, tablename, partitionschemaname, partitiontablename, partitionlevel 
-                                FROM pg_partitions 
+                                SELECT distinct schemaname, tablename, partitionschemaname, partitiontablename, partitionlevel
+                                FROM pg_partitions
                                 WHERE schemaname || '.' || tablename in (%s)
-                                ) as X, 
-                           (SELECT schemaname, tablename maxtable, max(partitionlevel) maxlevel 
-                            FROM pg_partitions 
+                                ) as X,
+                           (SELECT schemaname, tablename maxtable, max(partitionlevel) maxlevel
+                            FROM pg_partitions
                             group by (tablename, schemaname)
                            ) as Y
                            WHERE x.schemaname = y.schemaname and x.tablename = Y.maxtable and x.partitionlevel = Y.maxlevel;
@@ -605,7 +611,7 @@ def check_funny_chars_in_names(names, is_full_qualified_name=True):
     """
     '\n' inside table name makes it hard to specify the object name in shell command line,
     this may be worked around by using table file, but currently we read input line by line.
-    '!' inside table name will mess up with the shell history expansion.     
+    '!' inside table name will mess up with the shell history expansion.
     ',' is used for separating tables in plan file during incremental restore.
     '.' dot is currently being used for full qualified table name in format: schema.table
     """
@@ -761,7 +767,7 @@ def escapeDoubleQuoteInSQLString(string, forceDoubleQuote=True):
 
 def removeEscapingDoubleQuoteInSQLString(string, forceDoubleQuote=True):
     """
-    Remove the escaping double quote in database/schema/table name. 
+    Remove the escaping double quote in database/schema/table name.
     """
     if string is None:
         return string
@@ -774,7 +780,7 @@ def removeEscapingDoubleQuoteInSQLString(string, forceDoubleQuote=True):
 
 def formatSQLString(rel_file, isTableName=False):
     """
-    Read the full qualified schema or table name, do a split 
+    Read the full qualified schema or table name, do a split
     if each item is a table name into schema and table,
     escape the double quote inside the name properly.
     """
@@ -820,3 +826,37 @@ def get_restore_dir(data_dir, backup_dir):
         return backup_dir
     else:
         return data_dir
+
+
+def find_all_expr_start(line, expr):
+    """
+    Find all overlapping matches
+    """
+    return [m.start() for m in re.finditer('(?=%s)' % expr, line)]
+
+
+def get_table_info(line, cur_comment_expr):
+    """
+    It's complex to split when table name/schema name/user name/ tablespace name
+    contains full context of one of others', which is very unlikely, but in
+    case it happens, return None.
+
+    Since we only care about table name, type, and schema name, strip the input
+    is safe here.
+
+    line: contains the true (un-escaped) schema name, table name, and user name.
+    """
+    temp = line.strip('\n')
+    type_start = find_all_expr_start(temp, TYPE_EXPR)
+    schema_start = find_all_expr_start(temp, SCHEMA_EXPR)
+    owner_start = find_all_expr_start(temp, OWNER_EXPR)
+    tblspace_start = find_all_expr_start(temp, TABLESPACE_EXPR)
+    if len(type_start) != 1 or len(schema_start) != 1 or len(owner_start) != 1:
+        return (None, None, None)
+    name = temp[len(cur_comment_expr):type_start[0]]
+    type = temp[type_start[0] + len(TYPE_EXPR):schema_start[0]]
+    schema = temp[schema_start[0] + len(SCHEMA_EXPR):owner_start[0]]
+    if not tblspace_start:
+        tblspace_start.append(None)
+    owner = temp[owner_start[0] + len(OWNER_EXPR):tblspace_start[0]]
+    return (name, type, schema, owner)

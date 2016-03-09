@@ -16,12 +16,37 @@ from gppylib.operations.restore import RestoreDatabase, create_restore_plan, get
         update_ao_stat_func, update_ao_statistics, _build_gpdbrestore_cmd_line, ValidateTimestamp, \
         is_full_restore, restore_state_files_with_nbu, restore_report_file_with_nbu, restore_cdatabase_file_with_nbu, \
         restore_global_file_with_nbu, restore_config_files_with_nbu, config_files_dumped, global_file_dumped, \
-        restore_partition_list_file_with_nbu, restore_increments_file_with_nbu
+        restore_partition_list_file_with_nbu, restore_increments_file_with_nbu, GetDumpTables, COMMENT_EXPR
 
 from gppylib.commands.base import ExecutionError
 from gppylib.mainUtils import ExceptionNoStackTraceNeeded
 from mock import mock_open, patch, MagicMock, Mock
 import __builtin__
+
+class ValidateTimestampMock():
+    def run(self):
+        restore_timestamp = "20121212121212"
+        return (restore_timestamp, None, None)
+
+class OpenFileMock():
+    def __init__(self, lines):
+        self.lines = lines
+        self.max = len(lines)
+        self.counter = 0
+
+    def readline(self):
+        if self.counter < self.max:
+            value = self.lines[self.counter]
+            self.counter += 1
+            return value
+        else:
+            return None
+
+    def close(self):
+        pass
+
+    def open(self):
+        return self
 
 class restoreTestCase(unittest.TestCase):
 
@@ -1601,6 +1626,31 @@ CREATE DATABASE monkey WITH TEMPLATE = template0 ENCODING = 'UTF8' OWNER = thisg
         restore_tables = ['public.t1', 'public.t2']
         change_schema = 'newschema'
         self.restore._analyze_restore_tables(db_name, restore_tables, change_schema)
+
+    @patch('gppylib.operations.restore.ValidateTimestamp', return_value=ValidateTimestampMock())
+    @patch('os.path.join', return_value="")
+    @patch('__builtin__.open', return_value=OpenFileMock(["""-- Name:  ao_T`~@#$%^&*()-+[{]}|\;: \'"/?><1 ; Type: TABLE; Schema:  S`~@#$%^&*()-+[{]}|\;: \'"/?><1 ; Owner: gpadmin"""]))
+    def test_getdumptables_execute_when_no_tablespace_should_give_table_names_without_quotes(self, m1, m2, m3):
+        get = GetDumpTables(None, None, None, None, None, None, None)
+        result = get.execute()
+        self.assertEqual(result, [(' S`~@#$%^&*()-+[{]}|\\;: \'"/?><1 ', ' ao_T`~@#$%^&*()-+[{]}|\\;: \'"/?><1 ', 'gpadmin')])
+
+    @patch('gppylib.operations.restore.ValidateTimestamp', return_value=ValidateTimestampMock())
+    @patch('os.path.join', return_value="")
+    @patch('__builtin__.open', return_value=OpenFileMock(["""-- Name:  ao_T`~@#$%^&*()-+[{]}|\;: \'"/?><1 ; Type: TABLE; Schema:  S`~@#$%^&*()-+[{]}|\;: \'"/?><1 ; Owner: gpadmin; Tablespace: """]))
+    def test_getdumptables_execute_should_give_table_names_without_quotes(self, m1, m2, m3):
+        get = GetDumpTables(None, None, None, None, None, None, None)
+        result = get.execute()
+        self.assertEqual(result, [(' S`~@#$%^&*()-+[{]}|\\;: \'"/?><1 ', ' ao_T`~@#$%^&*()-+[{]}|\\;: \'"/?><1 ', 'gpadmin')])
+
+    @patch('gppylib.operations.restore.ValidateTimestamp', return_value=ValidateTimestampMock())
+    @patch('os.path.join', return_value="")
+    @patch('__builtin__.open', return_value=OpenFileMock(["""-- Name:  ao_T`~@#$%^&*()-+[{]}|\;: \'"/?><1 ; Type: COMMENT; Schema:  S`~@#$%^&*()-+[{]}|\;: \'"/?><1 ; Owner: gpadmin"""]))
+    def test_getdumptables_execute_when_not_table_should_return_none(self, m1, m2, m3):
+        get = GetDumpTables(None, None, None, None, None, None, None)
+        result = get.execute()
+        self.assertEqual(result, [])
+
 
 class ValidateTimestampTestCase(unittest.TestCase):
 

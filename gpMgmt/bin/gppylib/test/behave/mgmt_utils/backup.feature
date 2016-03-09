@@ -1462,9 +1462,9 @@ Feature: Validate command line arguments
         And gpcrondump should return a return code of 0
         And the timestamp from gpcrondump is stored
         And all the data from "bkdb" is saved for verification
-        And the user runs gpdbrestore with the stored timestamp and options "-T public.heap_table -T public.invalid"
+        And the user runs gpdbrestore with the stored timestamp and options "-T public.heap_table -T public.invalid -q"
         Then gpdbrestore should return a return code of 2
-        And gpdbrestore should print Invalid tables for -T option: The following tables were not found in plan file to stdout
+        And gpdbrestore should print Tables \[\'public.invalid\'\] not found in backup to stdout
 
     @backupfire
     Scenario: gpdbrestore -L with -u option
@@ -3037,6 +3037,7 @@ Feature: Validate command line arguments
     Scenario: Funny characters in the table name or schema name for gpdbrestore
         Given the test is initialized
         And database "testdb" exists
+        And there is a "heap" table "public.table1" in "testdb" with data
         When the user runs command "gpcrondump -a -x testdb"
         And the timestamp from gpcrondump is stored
         When the user runs gpdbrestore with the stored timestamp and options "--table-file gppylib/test/behave/mgmt_utils/steps/data/special_chars/funny_char_table.txt"
@@ -3051,7 +3052,7 @@ Feature: Validate command line arguments
         When the user runs command "gpdbrestore -s "A\\t\\n.,!1""
         Then gpdbrestore should return a return code of 2
         And gpdbrestore should print Name has an invalid character to stdout
-        When the user runs gpdbrestore with the stored timestamp and options "-T public.table --change-schema A\\t\\n.,!1"
+        When the user runs gpdbrestore with the stored timestamp and options "-T public.table1 --change-schema A\\t\\n.,!1"
         Then gpdbrestore should return a return code of 2
         And gpdbrestore should print Name has an invalid character to stdout
         When the user runs gpdbrestore with the stored timestamp and options "-S A\\t\\n.,!1"
@@ -3357,9 +3358,9 @@ Feature: Validate command line arguments
         When the user runs "gpcrondump -a -x bkdb"
         Then gpcrondump should return a return code of 0
         And the timestamp from gpcrondump is stored
-        When the user runs gpdbrestore with the stored timestamp and options "-T public.heap_table2"
+        When the user runs gpdbrestore with the stored timestamp and options "-T public.heap_table2 -q"
         Then gpdbrestore should return a return code of 2
-        Then gpdbrestore should print Table public.heap_table2 not found in backup to stdout
+        Then gpdbrestore should print Tables \[\'public.heap_table2\'\] not found in backup to stdout
         Then gpdbrestore should not print Issue with 'ANALYZE' of restored table 'public.heap_table2' in 'bkdb' database to stdout
 
     # THIS SHOULD BE THE LAST TEST
