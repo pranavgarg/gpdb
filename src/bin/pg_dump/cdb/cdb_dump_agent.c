@@ -717,6 +717,7 @@ main(int argc, char **argv)
 
 			case 1:				/* MPP Dump Info Format is Key_role_dbid */
 				g_CDBDumpInfo = pg_strdup(optarg);
+				printf("dumpinfo %s:\n", g_CDBDumpInfo);
 				if (!ParseCDBDumpInfo((char *) progname, g_CDBDumpInfo, &g_CDBDumpKey, &g_role, &g_dbID, &g_CDBPassThroughCredentials))
 					exit(1);
 				break;
@@ -763,7 +764,9 @@ main(int argc, char **argv)
 				sscanf(optarg, "%d", &dd_boost_buf_size);
 				break;
 			case 18:
-				sscanf(optarg, "%s", &ddboost_storage_unit_name);
+				ddboost_storage_unit_name = optarg;
+				//sscanf(optarg, "%s", &ddboost_storage_unit_name);
+				//printf("Storage unit: %s\n", ddboost_storage_unit_name);
 				break;
 #endif
 			case 10:

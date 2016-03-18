@@ -331,6 +331,7 @@ main(int argc, char **argv)
 		goto cleanup;
 	}
 
+	
     ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, dd_options->ddboost_storage_unit_name, createStorageUnit, &DEFAULT_BACKUP_DIRECTORY, dd_options->remote);
 
     if (ret)
@@ -795,7 +796,8 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 		        dd_options->get_stream_counts = true;
 	      	    break;
             case 36:
-            dd_options->ddboost_storage_unit_name = Safe_strdup(optarg);
+			dd_options->ddboost_storage_unit_name = Safe_strdup(optarg);
+			printf("%s\n", dd_options->ddboost_storage_unit_name);
 	      	    break;
 
 			default:
@@ -3261,6 +3263,7 @@ copyWithinDDboost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn, 
 
 	if (direction != COPY_WITHIN_SAME_DDBOOST)
 	{
+		printf("init: %s\n", dd_options->ddboost_storage_unit_name);
 		int ret = initDDSystem(&ddp_inst, &remote_ddp_conn, &dd_client_info, dd_options->ddboost_storage_unit_name, false, &remote_default_backup_directory, true /*remote*/);
 
 		if (remote_default_backup_directory)
@@ -3334,6 +3337,7 @@ copyWithinDDboost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn, 
     path2.path_name = full_path_dest;
 
     /* Create a directory on the destination if it doesn't exist */
+	printf("storage unit name: %s\n", storage_unit_name);
     err = createDDboostDir(target_ddp_conn, storage_unit_name, toFile);
     if (err)
     {

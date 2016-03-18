@@ -134,6 +134,7 @@ PQExpBuffer dump_prefix_buf = NULL;
 #ifdef USE_DDBOOST
 #include "ddp_api.h"
 static int dd_boost_enabled = 0;
+static char *ddboost_storage_unit_name = NULL;
 #endif
 
 int
@@ -1159,7 +1160,8 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 				dd_boost_enabled = 1;
 				break;
 			case 21:
-				pInputOpts->pszPassThroughParms = addPassThroughLongParm("ddboost_storage_unit_name", NULL, pInputOpts->pszPassThroughParms);
+				ddboost_storage_unit_name = pg_strdup(optarg);
+				pInputOpts->pszPassThroughParms = addPassThroughLongParm("ddboost_storage_unit_name", ddboost_storage_unit_name, pInputOpts->pszPassThroughParms);
 				break;
 #endif
 			case 7:
@@ -1892,6 +1894,7 @@ spinOffThreads(PGconn *pConn,
 				pParm->pTargetSegDBData->pszDBName
 			);
 
+		printf("command line: %s\n", pParm->pOptionsData->pszCmdLineParms);
 		pthread_create(&pParm->thread,
 					   NULL,
 					   threadProc,
