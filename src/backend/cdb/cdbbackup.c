@@ -800,8 +800,14 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 
 			memset(gpDDBoostCmdLine, 0, strlen(gpDDBoostCmdLine));
 	
-			sprintf(gpDDBoostCmdLine, "%s --write-file-from-stdin --to-file=%s/%s --dd_boost_buf_size=%s",
-                                gpDDBoostPg, pszDDBoostDirName, pszDDBoostFileName, dd_boost_buffer_size);
+			sprintf(gpDDBoostCmdLine,
+				"%s --write-file-from-stdin --to-file=%s/%s "
+				"--dd_boost_buf_size=%s --ddboost_storage_unit_name=%s ",
+				gpDDBoostPg,
+				pszDDBoostDirName,
+				pszDDBoostFileName,
+				dd_boost_buffer_size,
+				pszDDBoostStorageUnitName);
 
 			/* if user selected a compression program */
 			if (pszCompressionProgram[0] != '\0')

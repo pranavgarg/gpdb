@@ -810,8 +810,13 @@ main(int argc, char **argv)
 			{
 				formDDBoostPsqlCommandLine(&pszCmdLine, bCompUsed, ddboostPg, g_compPg,
 						ddp_file_name, dd_boost_buf_size,
-						postDataSchemaOnly? postDataFilterScript : filterScript, table_filter_file,
-						g_role, psqlPg, postDataSchemaOnly, change_schema_file, schema_level_file);
+						postDataSchemaOnly? postDataFilterScript : filterScript,
+						table_filter_file,
+						g_role, psqlPg,
+						postDataSchemaOnly,
+						change_schema_file,
+						schema_level_file,
+						ddboost_storage_unit_name);
 			}
 			else
 			{

@@ -717,7 +717,6 @@ main(int argc, char **argv)
 
 			case 1:				/* MPP Dump Info Format is Key_role_dbid */
 				g_CDBDumpInfo = pg_strdup(optarg);
-				printf("dumpinfo %s:\n", g_CDBDumpInfo);
 				if (!ParseCDBDumpInfo((char *) progname, g_CDBDumpInfo, &g_CDBDumpKey, &g_role, &g_dbID, &g_CDBPassThroughCredentials))
 					exit(1);
 				break;

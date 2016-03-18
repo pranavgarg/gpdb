@@ -1823,7 +1823,8 @@ formDDBoostPsqlCommandLine(char** retVal, bool compUsed, const char* ddboostPg, 
 							const char* ddp_file_name, const char* dd_boost_buf_size,
 							const char* filter_script, const char* table_filter_file,
 							int role, const char* psqlPg, bool postSchemaOnly,
-							const char* change_schema_file, const char *schema_level_file)
+							const char* change_schema_file, const char *schema_level_file,
+							const char* dd_boost_storage_unit_name)
 {
 	char* pszCmdLine = *retVal;
 
@@ -1831,11 +1832,13 @@ formDDBoostPsqlCommandLine(char** retVal, bool compUsed, const char* ddboostPg, 
 	strcat(pszCmdLine, " --readFile");
 	strcat(pszCmdLine, " --from-file=");
 	strcat(pszCmdLine, ddp_file_name);
-
 	if(compUsed)
 	{
 		strcat(pszCmdLine, ".gz");
 	}
+
+	strcat(pszCmdLine, " --ddboost_storage_unit_name=");
+	strcat(pszCmdLine, dd_boost_storage_unit_name);
 
 	strcat(pszCmdLine, " --dd_boost_buf_size=");
 	strcat(pszCmdLine, dd_boost_buf_size);

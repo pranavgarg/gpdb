@@ -163,7 +163,8 @@ extern void formDDBoostPsqlCommandLine(char** retVal, bool compUsed, const char*
 							const char* ddp_file_name, const char* dd_boost_buf_size,
 							const char* filter_script, const char* table_filter_file,
 							int role, const char* psqlPg, bool postSchemaOnly,
-							const char* change_schema_file, const char *schema_level_file);
+							const char* change_schema_file, const char *schema_level_file,
+							const char* dd_boost_storage_unit_name);
 
 extern void formSegmentPsqlCommandLine(char** retVal, const char* inputFileSpec,
 						bool compUsed, const char* compProg, const char* filter_script,
