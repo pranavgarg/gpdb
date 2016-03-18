@@ -1837,8 +1837,11 @@ formDDBoostPsqlCommandLine(char** retVal, bool compUsed, const char* ddboostPg, 
 		strcat(pszCmdLine, ".gz");
 	}
 
-	strcat(pszCmdLine, " --ddboost_storage_unit_name=");
-	strcat(pszCmdLine, dd_boost_storage_unit_name);
+	if (dd_boost_storage_unit_name)
+	{
+		strcat(pszCmdLine, " --ddboost_storage_unit_name=");
+		strcat(pszCmdLine, dd_boost_storage_unit_name);
+	}
 
 	strcat(pszCmdLine, " --dd_boost_buf_size=");
 	strcat(pszCmdLine, dd_boost_buf_size);
