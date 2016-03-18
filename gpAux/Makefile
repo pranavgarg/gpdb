@@ -514,7 +514,7 @@ devel : ISCONFIG=$(BUILDDIR)/GNUmakefile
 devel : gccVersionCheck HOMEDEP Debug/GNUmakefile
 else
 devel : ISCONFIG=../GNUmakefile
-devel : gccVersionCheck HOMEDEP $(GPPGDIR)/GNUmakefile
+devel : gccVersionCheck HOMEDEP $(ISCONFIG)
 endif
 	$(BUILD_STEPS)
 
