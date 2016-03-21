@@ -1226,7 +1226,7 @@ static int setLBEnv(void);
 static int createLB(clbHandle* LB,char* name);
 static int openLB(clbHandle* LB,char* name);
 static int validateDDBoostCredential(char *hostname, char *user, char *password, char* log_level ,char* log_size, char *default_backup_directory, bool remote);
-int getDDBoostCredential(char** hostname, char** user, char** password, char** log_level ,char** log_size, char **default_backup_directory, bool remote);
+int getDDBoostCredential(char** hostname, char** user, char** password, char** log_level ,char** log_size, char **default_backup_directory, char **storage_unit, bool remote);
 
 /*
  * Set the environment variable LD_LIBRARY_PATH in order to dynamically load LB's libraries.
@@ -1432,9 +1432,11 @@ openLB(clbHandle* LB,char* name)
  * Returns 0 in case of success, and -1 otherwise.
  */
 int
-setDDBoostCredential(char *hostname, char *user, char *password, char* log_level ,char* log_size, char *default_backup_directory, bool remote)
+setDDBoostCredential(char *hostname, char *user, char *password, char* log_level ,char* log_size, char *default_backup_directory, char *storage_unit, bool remote)
 {
-	/* TODO: validate default backup directory name if needed */
+	/* TODO: validate default backup directory name if needed 
+	   TODO: validate storage unit
+	*/
 	if (validateDDBoostCredential(hostname, user, password, log_level , log_size, default_backup_directory, remote))
 		return -1;
 
@@ -1483,13 +1485,23 @@ setDDBoostCredential(char *hostname, char *user, char *password, char* log_level
 			return -1;
 	}
 
+	if (storage_unit)
+	{
+		setItem(&LB, "storage_unit", storage_unit);
+	}
+	else
+	{
+		setItem(&LB, "storage_unit", "GPDB");
+			return -1;
+	}
+
 	clb_close(LB);
 
 	return 0;
 }
 
 int
-getDDBoostCredential(char** hostname, char** user, char** password, char **log_level ,char** log_size, char **default_backup_directory, bool remote)
+getDDBoostCredential(char** hostname, char** user, char** password, char **log_level ,char** log_size, char **default_backup_directory, char **storage_unit, bool remote)
 {
 	clbHandle LB;
 
@@ -1518,6 +1530,10 @@ getDDBoostCredential(char** hostname, char** user, char** password, char **log_l
 		return -1;
 	if (getItem(&LB , "log_size",log_size))
 		return -1;
+
+	if (getItem(&LB , "storage_unit", storage_unit))
+		return -1;
+
 	clb_close(LB);
 	return 0;
 }
@@ -1757,6 +1773,7 @@ initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_in
 	char *dd_boost_hostname = NULL;
 	char *log_level = NULL;
 	char *log_size = NULL;
+	char *storage_unit = NULL;
 
 	err = getDDBoostCredential(&dd_boost_hostname,
 			&dd_boost_username,
@@ -1764,6 +1781,7 @@ initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_in
 			&log_level,
 			&log_size,
 			default_backup_directory,
+			&storage_unit,
 			remote);
 
 	if (err)

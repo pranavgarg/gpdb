@@ -280,6 +280,7 @@ main(int argc, char **argv)
 		char *dd_boost_passwd = NULL;
 		char *log_level = NULL;
 		char *log_size = NULL;
+		char *storage_unit = NULL;
 		int err = DD_ERR_NONE;
 		err = getDDBoostCredential(&dd_boost_hostname,
 				&dd_boost_username,
@@ -287,6 +288,7 @@ main(int argc, char **argv)
 				&log_level,
 				&log_size,
 				&default_backup_directory,
+				&storage_unit,
 				dd_options->remote);
 		if (err)
 		{
@@ -301,6 +303,7 @@ main(int argc, char **argv)
 			printf("Default Backup Directory:%s\n", default_backup_directory);
 		}
 		printf("Data Domain default log level:%s\n", log_level);
+		printf("Data Domain Storage Unit:%s\n", storage_unit);
 
 		if (dd_boost_hostname)
 			free(dd_boost_hostname);
@@ -522,7 +525,7 @@ usage(void)
     printf("  --table=<schemaName.tableName>  --from-file=<ddboost_full_path_name>  --to-file=<local_disk_full_path_name>\n");
     printf("  To create a fake backup file containing only the data for the specified table. \n");
     printf("  The destination directory should exist on the local disk.\n\n\n");
-    printf("  --setCredential  --hostname <DD_host>  --user=<DD_user>  --defaultBackupDirectory <DD_backup_directory>");
+    printf("  --setCredential  --hostname <DD_host>  --user=<DD_user>  --defaultBackupDirectory <DD_backup_directory>\n");
     printf("                   [--password=<DD_password>  --logLevel=<NONE, ERROR, WARN, INFO, DEBUG> --logSize=<1-1000 (MB)>]\n");
     printf("  Set the ddboost login credentials. Hostname, user and default backup directory are required.\n");
     printf("  If the password option is not specified, it will be interactivly requested.\n");
@@ -797,7 +800,6 @@ fillInputOptions(int argc, char **argv, InputOptions * pInputOpts)
 	      	    break;
             case 36:
 			dd_options->ddboost_storage_unit_name = Safe_strdup(optarg);
-			printf("%s\n", dd_options->ddboost_storage_unit_name);
 	      	    break;
 
 			default:
@@ -3141,8 +3143,9 @@ setCredential(struct ddboost_options *dd_options)
   }
 
   if (setDDBoostCredential(dd_options->hostname, dd_options->user, dd_options->password,
-		                       dd_options->log_level, dd_options->log_size,
-								dd_options->default_backup_directory, dd_options->remote) < 0)
+		           dd_options->log_level, dd_options->log_size,
+			   dd_options->default_backup_directory, dd_options->ddboost_storage_unit_name,
+			   dd_options->remote) < 0)
 		return -1;
 
   return 0;

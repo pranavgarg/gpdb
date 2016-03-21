@@ -28,8 +28,8 @@
 #define DDBOOST_POOL_SIZE (32 * 1024 * 2048)
 #endif
 
-extern int getDDBoostCredential(char** hostname, char** user, char** password, char** log_level ,char** log_size, char **default_backup_directory, bool remote);
-extern int  setDDBoostCredential(char *hostname, char *user, char *password, char *log_level ,char *log_size, char *default_backup_directory, bool remote);
+extern int getDDBoostCredential(char** hostname, char** user, char** password, char** log_level ,char** log_size, char **default_backup_directory, char **storage_unit, bool remote);
+extern int  setDDBoostCredential(char *hostname, char *user, char *password, char *log_level ,char *log_size, char *default_backup_directory, char *storage_unit_name,  bool remote);
 extern int  parseDDBoostCredential(char *hostname, char *user, char *password, const char *progName);
 extern void rotate_dd_logs(const char *file_name, unsigned int num_of_files, unsigned int log_size);
 extern void _ddp_test_log(const void *session_ptr, const ddp_char_t *log_msg, ddp_severity_t severity);
