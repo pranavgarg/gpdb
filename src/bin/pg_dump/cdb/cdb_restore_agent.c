@@ -538,7 +538,7 @@ main(int argc, char **argv)
 			exit(1);
 		}
 
-		if (initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, ddboost_storage_unit_name, false, &DEFAULT_BACKUP_DIRECTORY, false))
+		if (initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, &ddboost_storage_unit_name, false, &DEFAULT_BACKUP_DIRECTORY, false))
                	{
 			mpp_err_msg(logInfo, progname, "Initializing DD system failed\n");
 			exit(1);

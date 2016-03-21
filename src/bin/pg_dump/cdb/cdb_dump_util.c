@@ -24,6 +24,7 @@
 #include "cdb_dump_util.h"
 
 #define DDP_CL_DDP 1
+#define DEFAULT_STORAGE_UNIT "GPDB"
 
 static char predump_errmsg[1024];
 
@@ -1221,6 +1222,7 @@ int (*clb_retrieveItemAsText)(clbHandle clbH, const char* itemName, char** secre
 
 
 static int setItem(clbHandle* LB, char *key, char *value);
+static int getItemOptional(clbHandle* LB, char *key, char **value);
 static int getItem(clbHandle* LB, char *key, char **value);
 static int setLBEnv(void);
 static int createLB(clbHandle* LB,char* name);
@@ -1313,6 +1315,18 @@ setItem(clbHandle* LB, char *key, char *value)
 	};
 
 	return 0;
+}
+
+static int
+setItemWithDefault(clbHandle *LB, char *key, char *value, char *defaultValue)
+{
+	return setItem(LB, key, value ?: defaultValue);
+}
+
+static int
+getItemOptional(clbHandle* LB, char *key, char **value)
+{
+	return clb_retrieveItemAsText(*LB, key, value);
 }
 
 static int
@@ -1463,41 +1477,14 @@ setDDBoostCredential(char *hostname, char *user, char *password, char* log_level
 			return -1;
 	}
 
-	if (log_level)
-	{
-		if (setItem(&LB , "log_level",log_level))
-			return -1;
-	}
-	else
-	{
-		if (setItem(&LB , "log_level","WARNING"))
-			return -1;
-	}
-
-	if (log_size)
-	{
-		if (setItem(&LB , "log_size",log_size))
-			return -1;
-	}
-	else
-	{
-		if (setItem(&LB , "log_size","50"))
-			return -1;
-	}
-
-	if (storage_unit)
-	{
-		setItem(&LB, "storage_unit", storage_unit);
-	}
-	else
-	{
-		setItem(&LB, "storage_unit", "GPDB");
-			return -1;
-	}
+	int ret_code = 0;
+	ret_code |= setItemWithDefault(&LB, "log_level", log_level, "WARNING");
+	ret_code |= setItemWithDefault(&LB, "log_size", log_size, "50");
+	ret_code |= setItemWithDefault(&LB, "storage_unit", storage_unit, DEFAULT_STORAGE_UNIT);
 
 	clb_close(LB);
 
-	return 0;
+	return ret_code;
 }
 
 int
@@ -1531,8 +1518,10 @@ getDDBoostCredential(char** hostname, char** user, char** password, char **log_l
 	if (getItem(&LB , "log_size",log_size))
 		return -1;
 
-	if (getItem(&LB , "storage_unit", storage_unit))
-		return -1;
+	/* legacy configurations might not have storage_unit as part of their config
+           so supply a default value */
+	if (getItemOptional(&LB , "storage_unit", storage_unit))
+		*storage_unit = Safe_strdup(DEFAULT_STORAGE_UNIT);
 
 	clb_close(LB);
 	return 0;
@@ -1763,7 +1752,7 @@ _ddp_test_log(const void *session_ptr, const ddp_char_t *log_msg, ddp_severity_t
 }
 
 int
-initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_info_t *cl_info, char *storage_unit_name,
+initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_info_t *cl_info, char **storage_unit_name,
             bool createStorageUnit, char **default_backup_directory, bool remote)
 {
 	int err = DD_ERR_NONE;
@@ -1783,6 +1772,13 @@ initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_in
 			default_backup_directory,
 			&storage_unit,
 			remote);
+
+
+	if (*storage_unit_name == NULL)
+		*storage_unit_name = Safe_strdup(storage_unit);
+
+	if(storage_unit)
+		free(storage_unit);
 
 	if (err)
 	{
@@ -1834,8 +1830,6 @@ initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_in
 	return 0;
 }
 
-
-
 void
 formDDBoostPsqlCommandLine(char** retVal, bool compUsed, const char* ddboostPg, const char* compProg,
 							const char* ddp_file_name, const char* dd_boost_buf_size,
@@ -1857,7 +1851,7 @@ formDDBoostPsqlCommandLine(char** retVal, bool compUsed, const char* ddboostPg, 
 
 	if (dd_boost_storage_unit_name)
 	{
-		strcat(pszCmdLine, " --ddboost_storage_unit_name=");
+		strcat(pszCmdLine, " --storage_unit_name=");
 		strcat(pszCmdLine, dd_boost_storage_unit_name);
 	}
 
