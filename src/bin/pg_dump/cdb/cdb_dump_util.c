@@ -1316,6 +1316,12 @@ setItem(clbHandle* LB, char *key, char *value)
 }
 
 static int
+setItemWithDefault(clbHandle *LB, char *key, char *value, char *defaultValue)
+{
+	return setItem(LB, key, value ?: defaultValue);
+}
+
+static int
 getItem(clbHandle* LB, char *key, char **value)
 {
 	int iError = clb_retrieveItemAsText(*LB, key, value);
@@ -1463,41 +1469,14 @@ setDDBoostCredential(char *hostname, char *user, char *password, char* log_level
 			return -1;
 	}
 
-	if (log_level)
-	{
-		if (setItem(&LB , "log_level",log_level))
-			return -1;
-	}
-	else
-	{
-		if (setItem(&LB , "log_level","WARNING"))
-			return -1;
-	}
-
-	if (log_size)
-	{
-		if (setItem(&LB , "log_size",log_size))
-			return -1;
-	}
-	else
-	{
-		if (setItem(&LB , "log_size","50"))
-			return -1;
-	}
-
-	if (storage_unit)
-	{
-		setItem(&LB, "storage_unit", storage_unit);
-	}
-	else
-	{
-		setItem(&LB, "storage_unit", "GPDB");
-			return -1;
-	}
+	int ret_code = 0;
+	ret_code |= setItemWithDefault(&LB, "log_level", log_level, "WARNING");
+	ret_code |= setItemWithDefault(&LB, "log_size", log_size, "50");
+	ret_code |= setItemWithDefault(&LB, "storage_unit", storage_unit, "GPDB");
 
 	clb_close(LB);
 
-	return 0;
+	return ret_code;
 }
 
 int
