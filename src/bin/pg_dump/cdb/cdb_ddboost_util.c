@@ -919,17 +919,8 @@ readFromDDFile(FILE *fp, char *ddBoostFileName, char *ddboost_storage_unit_name)
     ddp_uint64_t total_bytes = 0;
     size_t written = 0;
     ddp_path_t path1 = {0};
-	char *storage_unit_name = NULL;
 	char *full_path = NULL;
 	ddp_stat_t stat_buf;
-
-	storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-	if (storage_unit_name == NULL)
-	{
-		mpp_err_msg(logError, progname, "Memory allocation failed\n");
-		return -1;
-	}
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", ddboost_storage_unit_name);
 
 	full_path = (char*)malloc(MAX_PATH_NAME);
 	if (full_path == NULL)
@@ -940,7 +931,7 @@ readFromDDFile(FILE *fp, char *ddBoostFileName, char *ddboost_storage_unit_name)
 	}
 	snprintf(full_path, MAX_PATH_NAME, "%s", ddBoostFileName);
 
-	path1.su_name = storage_unit_name;
+	path1.su_name = ddboost_storage_unit_name;
     path1.path_name = full_path;
 
     err = ddp_open_file(ddp_conn, &path1, DDP_O_READ , 0400, &handle);
@@ -996,8 +987,6 @@ cleanup:
 		free(buf);
 	if (full_path)
 		free(full_path);
-	if (storage_unit_name)
-		free(storage_unit_name);
 
     return err;
 }
@@ -1129,15 +1118,6 @@ deleteDir(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn)
 		return -1;
 	}
 
-    storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-	if (storage_unit_name == NULL)
-	{
-		err= -1;
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-		goto cleanup;
-	}
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
 	full_path = (char*)malloc(MAX_PATH_NAME);
 	if (full_path == NULL)
 	{
@@ -1147,7 +1127,7 @@ deleteDir(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn)
 	}
 	snprintf(full_path, MAX_PATH_NAME, "%s", ddboostDir);
 
-	path1.su_name = storage_unit_name;
+	path1.su_name = dd_options->ddboost_storage_unit_name;
 	path1.path_name = ddboostDir;
 
 	err = ddBoostRmdir(ddboostDir, ddp_conn, ddboostDir, dd_options->ddboost_storage_unit_name);
@@ -1324,6 +1304,7 @@ cleanup:
 
 static int writeToDDFile(FILE *fp, char *ddBoostFileName, char *ddboost_storage_unit_name)
 {
+	// TODO: do we need ddboost_storage_unit_name as an argument? why not just use ddboost_option
 	ddp_file_desc_t handle = DDP_INVALID_DESCRIPTOR;
     int err = 0;
     ddp_uint64_t ret_count = 0;
@@ -1337,15 +1318,6 @@ static int writeToDDFile(FILE *fp, char *ddBoostFileName, char *ddboost_storage_
 	char *full_path = NULL;
 	ddp_stat_t stat_buf;
 
-	storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-	if (storage_unit_name == NULL)
-	{
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-        err = -1;
-		goto cleanup;
-	}
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", ddboost_storage_unit_name);
-
 	full_path = (char*)malloc(MAX_PATH_NAME);
 	if (full_path == NULL)
 	{
@@ -1355,10 +1327,10 @@ static int writeToDDFile(FILE *fp, char *ddBoostFileName, char *ddboost_storage_
 	}
 	snprintf(full_path, MAX_PATH_NAME, "%s", ddBoostFileName);
 
-	path1.su_name = storage_unit_name;
+	path1.su_name = ddboost_storage_unit_name;
     path1.path_name = full_path;
 
-	err = createDDboostDir(ddp_conn, storage_unit_name, ddBoostFileName);
+	err = createDDboostDir(ddp_conn, ddboost_storage_unit_name, ddBoostFileName);
 	if (err)
 	{
 		mpp_err_msg(logError, progname, "Creating path %s on ddboost failed. Err %d\n", ddBoostFileName, err);
@@ -1505,15 +1477,6 @@ readFromDDFileToOutput(char *ddBoostFileName, char *ddboost_storage_unit_name)
 	char *full_path = NULL;
 	ddp_stat_t stat_buf;
 
-	storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-    if (storage_unit_name == NULL)
-	{
-		mpp_err_msg(logError, progname,("Memory allocation failed\n"));
-        err = -1;
-        goto cleanup;
-	}
-	snprintf(storage_unit_name, MAX_PATH_NAME, "%s", ddboost_storage_unit_name);
-
 	full_path = (char*)malloc(MAX_PATH_NAME);
 	if (full_path == NULL)
 	{
@@ -1523,7 +1486,7 @@ readFromDDFileToOutput(char *ddBoostFileName, char *ddboost_storage_unit_name)
 	}
 	snprintf(full_path, MAX_PATH_NAME, "%s", ddBoostFileName);
 
-	path1.su_name = storage_unit_name;
+	path1.su_name = ddboost_storage_unit_name;
     path1.path_name = full_path;
 
     err = ddp_open_file(ddp_conn, &path1, DDP_O_READ , 0400, &handle);
@@ -1664,15 +1627,6 @@ int listDirectory(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn)
         goto cleanup;
     }
 
-    storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-    if (!storage_unit_name)
-    {
-        err = -1;
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-        goto cleanup;
-    }
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
     full_path = (char*)malloc(MAX_PATH_NAME);
     if (!full_path)
     {
@@ -1682,7 +1636,7 @@ int listDirectory(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn)
     }
     snprintf(full_path, MAX_PATH_NAME, "%s", ddboostDir);
 
-    path1.su_name = storage_unit_name;
+    path1.su_name = dd_options->ddboost_storage_unit_name;
     path1.path_name = ddboostDir;
 
 	err = ddp_open_dir(ddp_conn, &path1, &dird);
@@ -1776,15 +1730,6 @@ createFakeRestoreFile(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_co
 		return -1;
 	}
 
-	storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-    if (!storage_unit_name)
-    {
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-        err = -1;
-        goto cleanup;
-    }
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
 	full_path = (char*)malloc(MAX_PATH_NAME);
     if (!full_path)
     {
@@ -1794,7 +1739,7 @@ createFakeRestoreFile(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_co
     }
 	snprintf(full_path, MAX_PATH_NAME, "%s", dd_options->from_file);
 
-	path1.su_name = storage_unit_name;
+	path1.su_name = dd_options->ddboost_storage_unit_name;
     path1.path_name = full_path;
 
     err = ddp_open_file(ddp_conn, &path1, DDP_O_READ , 0400, &handle);
@@ -2061,15 +2006,6 @@ getLatestTimestamp(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn,
         return -1;
     }
 
-    storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-    if (!storage_unit_name)
-    {
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-        err = -1;
-        goto cleanup;
-    }
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
     full_path = (char*)malloc(MAX_PATH_NAME);
     if (!full_path)
     {
@@ -2079,7 +2015,7 @@ getLatestTimestamp(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn,
     }
     snprintf(full_path, MAX_PATH_NAME, "%s", ddboostDir);
 
-    path1.su_name = storage_unit_name;
+    path1.su_name = dd_options->ddboost_storage_unit_name;
     path1.path_name = ddboostDir;
 
 	err = ddp_open_dir(ddp_conn, &path1, &dird);
@@ -2202,15 +2138,6 @@ dumpFileHasDatabaseName(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_
 	ddp_stat_t stat_buf;
 	char *searchString = NULL;
 
-	storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-	if (storage_unit_name == NULL)
-	{
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-		ret = 0;
-		goto cleanup;
-	}
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
 	full_path = (char*)malloc(MAX_PATH_NAME);
 	if (full_path == NULL)
 	{
@@ -2220,7 +2147,7 @@ dumpFileHasDatabaseName(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_
 	}
 	snprintf(full_path, MAX_PATH_NAME, "%s", fullPath);
 
-	path1.su_name = storage_unit_name;
+	path1.su_name =  dd_options->ddboost_storage_unit_name;
     path1.path_name = full_path;
 
     err = ddp_open_file(ddp_conn, &path1, DDP_O_READ , 0400, &handle);
@@ -2310,15 +2237,6 @@ syncFilesFromDDBoost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_con
         return -1;
     }
 
-    storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-	if (storage_unit_name == NULL)
-    {
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-        err = -1;
-        goto cleanup;
-    }
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
     full_path = (char*)malloc(MAX_PATH_NAME);
 	if (full_path == NULL)
     {
@@ -2328,7 +2246,7 @@ syncFilesFromDDBoost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_con
     }
     snprintf(full_path, MAX_PATH_NAME, "%s", ddboostDir);
 
-    path1.su_name = storage_unit_name;
+    path1.su_name = dd_options->ddboost_storage_unit_name;
     path1.path_name = ddboostDir;
 
 	/* Start traversing from default backup directory */
@@ -2444,15 +2362,6 @@ copyFilesFromDir(const char *fromDir, char *toDir, ddp_conn_desc_t ddp_conn, cha
         return -1;
     }
 
-    storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-	if (storage_unit_name == NULL)
-	{
-		mpp_err_msg(logError, progname, "Memory allocation failed\n");
-		err = -1;
-		goto cleanup;
-	}
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", ddboost_storage_unit_name);
-
     full_path = (char*)malloc(MAX_PATH_NAME);
 	if (full_path == NULL)
 	{
@@ -2473,7 +2382,7 @@ copyFilesFromDir(const char *fromDir, char *toDir, ddp_conn_desc_t ddp_conn, cha
     memset(dest_path, 0, MAX_PATH_NAME);
     strncpy(dest_path, toDir, MAX_PATH_NAME);
 
-	path1.su_name = storage_unit_name;
+	path1.su_name = ddboost_storage_unit_name;
     path1.path_name = ddboostDir;
 
 	/* Start traversing from db_dumps/ directory */
@@ -2635,14 +2544,6 @@ static int writeToDDFileFromInput(struct ddboost_options *dd_options)
 		return -1;
 	}
 
-	storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-	if (storage_unit_name == NULL)
-	{
-		mpp_err_msg(logError, progname, "Memory allocation failed\n");
-		return -1;
-	}
-	snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
 	full_path = (char*)malloc(MAX_PATH_NAME);
 	if (full_path == NULL)
 	{
@@ -2652,10 +2553,10 @@ static int writeToDDFileFromInput(struct ddboost_options *dd_options)
 	}
 	snprintf(full_path, MAX_PATH_NAME, "%s", ddBoostFileName);
 
-	path1.su_name = storage_unit_name;
+	path1.su_name = dd_options->ddboost_storage_unit_name;
 	path1.path_name = full_path;
 
-	err = createDDboostDir(ddp_conn, storage_unit_name, ddBoostFileName);
+	err = createDDboostDir(ddp_conn, dd_options->ddboost_storage_unit_name, ddBoostFileName);
 	if (err)
 	{
 		mpp_err_msg(logError, progname, "ddboost Creating path %s failed. Err %d\n", ddBoostFileName, err);
@@ -2861,15 +2762,6 @@ int listDirectoryFull(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_co
         return -1;
     }
 
-    storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-    if (!storage_unit_name)
-    {
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-        err = -1;
-        goto cleanup;
-    }
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
     full_path = (char*)malloc(MAX_PATH_NAME);
     if (!full_path)
     {
@@ -2879,7 +2771,7 @@ int listDirectoryFull(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_co
     }
     snprintf(full_path, MAX_PATH_NAME, "%s", ddboostDir);
 
-    path1.su_name = storage_unit_name;
+    path1.su_name = dd_options->ddboost_storage_unit_name;
     path1.path_name = ddboostDir;
 
 	err = ddp_open_dir(ddp_conn, &path1, &dird);
@@ -2934,7 +2826,7 @@ int listDirectoryFull(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_co
             memset(temp_path, 0, MAX_PATH_NAME);
 			snprintf(temp_path, MAX_PATH_NAME, "%s/%s", ddboostDir, ret_dirent.d_name);
 
-            dd_file_path.su_name = storage_unit_name;
+            dd_file_path.su_name = dd_options->ddboost_storage_unit_name;
             dd_file_path.path_name = temp_path;
 
             err = ddp_open_file(ddp_conn, &dd_file_path, DDP_O_READ, 0, &handle);
@@ -3008,15 +2900,6 @@ syncFilesFromDDBoostTimestamp(struct ddboost_options *dd_options, ddp_conn_desc_
     memset(tempDate, 0, 10);
     snprintf(tempDate, 9, "%s", dd_options->syncFilesFromTimestamp);
 
-    storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-    if (storage_unit_name == NULL)
-    {
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-        err = -1;
-        goto cleanup;
-    }
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
     ddboostPath = (char*)malloc(MAX_PATH_NAME);
     if (ddboostPath == NULL)
     {
@@ -3026,7 +2909,7 @@ syncFilesFromDDBoostTimestamp(struct ddboost_options *dd_options, ddp_conn_desc_
     }
     snprintf(ddboostPath, MAX_PATH_NAME, "%s/%s", ddboostDir, tempDate);
 
-    path1.su_name = storage_unit_name;
+    path1.su_name = dd_options->ddboost_storage_unit_name;
     path1.path_name = ddboostPath;
 
     /* Start traversing the db_dumps/<date> directory */
@@ -3176,15 +3059,6 @@ renameFile(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn)
         goto cleanup;
     }
 
-    storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-    if (storage_unit_name == NULL)
-    {
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-        err = -1;
-        goto cleanup;
-    }
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
     full_path_source = (char*)malloc(MAX_PATH_NAME);
     if (full_path_source == NULL)
     {
@@ -3194,7 +3068,7 @@ renameFile(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn)
     }
     snprintf(full_path_source, MAX_PATH_NAME, "%s", fromFile);
 
-    path1.su_name = storage_unit_name;
+    path1.su_name = dd_options->ddboost_storage_unit_name;
     path1.path_name = full_path_source;
 
     full_path_dest = (char*)malloc(MAX_PATH_NAME);
@@ -3205,11 +3079,11 @@ renameFile(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn)
         goto cleanup;
     }
     snprintf(full_path_dest, MAX_PATH_NAME, "%s", toFile);
-    path2.su_name = storage_unit_name;
+    path2.su_name = dd_options->ddboost_storage_unit_name;
     path2.path_name = full_path_dest;
 
     /* Create a directory on the destination if it doesn't exist */
-    err = createDDboostDir(ddp_conn, storage_unit_name, toFile);
+    err = createDDboostDir(ddp_conn, dd_options->ddboost_storage_unit_name, toFile);
     if (err)
     {
         mpp_err_msg(logError, progname, "Creating path %s on ddboost failed. Err %d\n", fromFile, err);
@@ -3307,15 +3181,6 @@ copyWithinDDboost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn, 
         return -1;
     }
 
-    storage_unit_name = (char*)malloc(MAX_PATH_NAME);
-    if (storage_unit_name == NULL)
-    {
-        mpp_err_msg(logError, progname, "Memory allocation failed\n");
-        err = -1;
-        goto cleanup;
-    }
-    snprintf(storage_unit_name, MAX_PATH_NAME, "%s", dd_options->ddboost_storage_unit_name);
-
     full_path_source = (char*)malloc(MAX_PATH_NAME);
     if (full_path_source == NULL)
     {
@@ -3325,7 +3190,7 @@ copyWithinDDboost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn, 
     }
     snprintf(full_path_source, MAX_PATH_NAME, "%s", fromFile);
 
-    path1.su_name = storage_unit_name;
+    path1.su_name = dd_options->ddboost_storage_unit_name;
     path1.path_name = full_path_source;
 
     full_path_dest = (char*)malloc(MAX_PATH_NAME);
@@ -3336,12 +3201,12 @@ copyWithinDDboost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn, 
         goto cleanup;
     }
     snprintf(full_path_dest, MAX_PATH_NAME, "%s", toFile);
-    path2.su_name = storage_unit_name;
+    path2.su_name = dd_options->ddboost_storage_unit_name;
     path2.path_name = full_path_dest;
 
     /* Create a directory on the destination if it doesn't exist */
-	printf("storage unit name: %s\n", storage_unit_name);
-    err = createDDboostDir(target_ddp_conn, storage_unit_name, toFile);
+	printf("storage unit name: %s\n", dd_options->ddboost_storage_unit_name);
+    err = createDDboostDir(target_ddp_conn, dd_options->ddboost_storage_unit_name, toFile);
     if (err)
     {
         mpp_err_msg(logError, progname, "Creating path %s on ddboost failed. Err %d\n", fromFile, err);
