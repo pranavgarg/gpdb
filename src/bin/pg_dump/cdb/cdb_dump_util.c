@@ -24,6 +24,7 @@
 #include "cdb_dump_util.h"
 
 #define DDP_CL_DDP 1
+#define DEFAULT_STORAGE_UNIT "GPDB"
 
 static char predump_errmsg[1024];
 
@@ -1221,6 +1222,7 @@ int (*clb_retrieveItemAsText)(clbHandle clbH, const char* itemName, char** secre
 
 
 static int setItem(clbHandle* LB, char *key, char *value);
+static int getItemOptional(clbHandle* LB, char *key, char **value);
 static int getItem(clbHandle* LB, char *key, char **value);
 static int setLBEnv(void);
 static int createLB(clbHandle* LB,char* name);
@@ -1319,6 +1321,12 @@ static int
 setItemWithDefault(clbHandle *LB, char *key, char *value, char *defaultValue)
 {
 	return setItem(LB, key, value ?: defaultValue);
+}
+
+static int
+getItemOptional(clbHandle* LB, char *key, char **value)
+{
+	return clb_retrieveItemAsText(*LB, key, value);
 }
 
 static int
@@ -1472,7 +1480,7 @@ setDDBoostCredential(char *hostname, char *user, char *password, char* log_level
 	int ret_code = 0;
 	ret_code |= setItemWithDefault(&LB, "log_level", log_level, "WARNING");
 	ret_code |= setItemWithDefault(&LB, "log_size", log_size, "50");
-	ret_code |= setItemWithDefault(&LB, "storage_unit", storage_unit, "GPDB");
+	ret_code |= setItemWithDefault(&LB, "storage_unit", storage_unit, DEFAULT_STORAGE_UNIT);
 
 	clb_close(LB);
 
@@ -1510,8 +1518,10 @@ getDDBoostCredential(char** hostname, char** user, char** password, char **log_l
 	if (getItem(&LB , "log_size",log_size))
 		return -1;
 
-	if (getItem(&LB , "storage_unit", storage_unit))
-		return -1;
+	/* legacy configurations might not have storage_unit as part of their config
+           so supply a default value */
+	if (getItemOptional(&LB , "storage_unit", storage_unit))
+		*storage_unit = Safe_strdup(DEFAULT_STORAGE_UNIT);
 
 	clb_close(LB);
 	return 0;

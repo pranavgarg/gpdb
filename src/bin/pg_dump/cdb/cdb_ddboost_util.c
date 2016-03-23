@@ -3165,7 +3165,6 @@ copyWithinDDboost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn, 
     path2.path_name = full_path_dest;
 
     /* Create a directory on the destination if it doesn't exist */
-	printf("storage unit name: %s\n", dd_options->storage_unit_name);
     err = createDDboostDir(target_ddp_conn, dd_options->storage_unit_name, toFile);
     if (err)
     {

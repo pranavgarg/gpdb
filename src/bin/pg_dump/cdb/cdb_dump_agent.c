@@ -890,6 +890,7 @@ main(int argc, char **argv)
 		}
 
 		ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, &ddboost_storage_unit_name, false, &DEFAULT_BACKUP_DIRECTORY, false);
+
 		if (ret)
 		{
 			mpp_err_msg(logError, progname, "Error connecting to DDboost. Check parameters\n");
