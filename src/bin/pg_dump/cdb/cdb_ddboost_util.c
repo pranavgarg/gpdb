@@ -334,8 +334,8 @@ main(int argc, char **argv)
 		goto cleanup;
 	}
 
-	
-    ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, dd_options->storage_unit_name, createStorageUnit, &DEFAULT_BACKUP_DIRECTORY, dd_options->remote);
+
+	ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, &dd_options->storage_unit_name, createStorageUnit, &DEFAULT_BACKUP_DIRECTORY, dd_options->remote);
 
     if (ret)
     {
@@ -3101,7 +3101,7 @@ copyWithinDDboost(struct ddboost_options *dd_options, ddp_conn_desc_t ddp_conn, 
 	if (direction != COPY_WITHIN_SAME_DDBOOST)
 	{
 		printf("init: %s\n", dd_options->storage_unit_name);
-		int ret = initDDSystem(&ddp_inst, &remote_ddp_conn, &dd_client_info, dd_options->storage_unit_name, false, &remote_default_backup_directory, true /*remote*/);
+		int ret = initDDSystem(&ddp_inst, &remote_ddp_conn, &dd_client_info, &dd_options->storage_unit_name, false, &remote_default_backup_directory, true /*remote*/);
 
 		if (remote_default_backup_directory)
 			free(remote_default_backup_directory);

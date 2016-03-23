@@ -764,8 +764,6 @@ main(int argc, char **argv)
 				break;
 			case 18:
 				ddboost_storage_unit_name = optarg;
-				//sscanf(optarg, "%s", &ddboost_storage_unit_name);
-				//printf("Storage unit: %s\n", ddboost_storage_unit_name);
 				break;
 #endif
 			case 10:
@@ -891,7 +889,7 @@ main(int argc, char **argv)
 			exit(1);
 		}
 
-		ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, ddboost_storage_unit_name, false, &DEFAULT_BACKUP_DIRECTORY, false);
+		ret = initDDSystem(&ddp_inst, &ddp_conn, &dd_client_info, &ddboost_storage_unit_name, false, &DEFAULT_BACKUP_DIRECTORY, false);
 		if (ret)
 		{
 			mpp_err_msg(logError, progname, "Error connecting to DDboost. Check parameters\n");

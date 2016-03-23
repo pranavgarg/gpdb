@@ -1742,7 +1742,7 @@ _ddp_test_log(const void *session_ptr, const ddp_char_t *log_msg, ddp_severity_t
 }
 
 int
-initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_info_t *cl_info, char *storage_unit_name,
+initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_info_t *cl_info, char **storage_unit_name,
             bool createStorageUnit, char **default_backup_directory, bool remote)
 {
 	int err = DD_ERR_NONE;
@@ -1762,6 +1762,13 @@ initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_in
 			default_backup_directory,
 			&storage_unit,
 			remote);
+
+
+	if (*storage_unit_name == NULL)
+		*storage_unit_name = Safe_strdup(storage_unit);
+
+	if(storage_unit)
+		free(storage_unit);
 
 	if (err)
 	{
@@ -1813,8 +1820,6 @@ initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_in
 	return 0;
 }
 
-
-
 void
 formDDBoostPsqlCommandLine(char** retVal, bool compUsed, const char* ddboostPg, const char* compProg,
 							const char* ddp_file_name, const char* dd_boost_buf_size,
@@ -1836,7 +1841,7 @@ formDDBoostPsqlCommandLine(char** retVal, bool compUsed, const char* ddboostPg, 
 
 	if (dd_boost_storage_unit_name)
 	{
-		strcat(pszCmdLine, " --ddboost_storage_unit_name=");
+		strcat(pszCmdLine, " --storage_unit_name=");
 		strcat(pszCmdLine, dd_boost_storage_unit_name);
 	}
 

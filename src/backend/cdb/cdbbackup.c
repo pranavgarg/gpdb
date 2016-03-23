@@ -448,7 +448,7 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 			+ strlen("_post_data")
 			+ strlen(".gz")
 			+ strlen(" --to-file= ")
-			+ strlen(" --ddboost_storage_unit_name=  ")
+			+ strlen(" --storage_unit_name=  ")
 			+ strlen(" --write-file-from-stdin  ")
 			+ strlen(" --dd_boost_buf_size= ")
 			+ strlen(gpDDBoostPg)
@@ -461,7 +461,7 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 			elog(ERROR, "\nDDboost filename is NULL\n");
 
 		sprintf(gpDDBoostCmdLine,
-			"%s --write-file-from-stdin --to-file=%s/%s --dd_boost_buf_size=%s --ddboost_storage_unit_name=%s ",
+			"%s --write-file-from-stdin --to-file=%s/%s --dd_boost_buf_size=%s --storage_unit_name=%s ",
 			gpDDBoostPg,
 			pszDDBoostDirName,
 			pszDDBoostFileName,
@@ -802,7 +802,7 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 	
 			sprintf(gpDDBoostCmdLine,
 				"%s --write-file-from-stdin --to-file=%s/%s "
-				"--dd_boost_buf_size=%s --ddboost_storage_unit_name=%s ",
+				"--dd_boost_buf_size=%s --storage_unit_name=%s ",
 				gpDDBoostPg,
 				pszDDBoostDirName,
 				pszDDBoostFileName,
