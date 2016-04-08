@@ -64,6 +64,7 @@ CATALOG_SCHEMA = [
 logger = gplog.get_default_logger()
 conn = None
 lock_file_name = None
+default_storage_unit = 'GPDB'
 
 class GpCronDump(Operation):
 
@@ -170,6 +171,10 @@ class GpCronDump(Operation):
         if self.list_backup_files and not self.timestamp_key:
             raise Exception('Must supply -K option when listing backup files')
 
+        if self.ddboost_storage_unit != default_storage_unit and not self.ddboost:
+            raise Exception('Must specify --ddboost option together with the --ddboost-storage-unit')
+
+
         if len(self.dump_databases) > 0:
             if self.timestamp_key and len(self.dump_databases) > 1:
                 raise ExceptionNoStackTraceNeeded('multi-database backup is not supported with -K option')
@@ -227,9 +232,6 @@ class GpCronDump(Operation):
             self.free_space_percent = int(self.free_space_percent)
         else:
             self.free_space_percent = FREE_SPACE_PERCENT
-
-        if self.ddboost_storage_unit and not self.ddboost:
-            raise Excaption('Must specify --ddboost option together with the --ddboost-storage-unit')
 
         if self.ddboost:
             self.free_space_percent = None
@@ -471,7 +473,7 @@ class GpCronDump(Operation):
                 return
         logger.debug("DD Boost config removed from all GPDB servers.")
 
-    def createDDBoostConfig(self, gpHostsSet, ddboostHostsSet, user, password, backupDir):
+    def createDDBoostConfig(self, gpHostsSet, ddboostHostsSet, user, password, backupDir, ddboost_storage_unit):
         """
         Creates config file for local/remote Data Domain on master and all the
         segment servers.  A brief outline of this function is as follows.
@@ -566,6 +568,10 @@ class GpCronDump(Operation):
             ddcmdTemplate += " --remote"
         else:
             ddcmdTemplate += " --defaultBackupDirectory=" + backupDir
+
+        if ddboost_storage_unit:
+            ddcmdTemplate += " --storage_unit_name=" + ddboost_storage_unit
+
         # Create a DD Boost config on master for each DD Boost host.  Try
         # logging into each DD Boost using the config.
         for dd in ddboostHostsSet:
@@ -737,7 +743,7 @@ class GpCronDump(Operation):
                 hostset = self.getHostSet(self.getGpArray())
                 p = getpass()
                 self.validatePassword(password=p)
-                self.createDDBoostConfig(hostset, self.ddboost_hosts, self.ddboost_user, p, self.ddboost_backupdir)
+                self.createDDBoostConfig(hostset, self.ddboost_hosts, self.ddboost_user, p, self.ddboost_backupdir, self.ddboost_storage_unit)
                 return 0
             else:
                 raise ExceptionNoStackTraceNeeded('The options --ddboost-host and --ddboost-user are standalone. They are NOT used in conjunction with any other gocrondump options (only with --ddboost-verify).')
@@ -1555,8 +1561,6 @@ def create_parser():
 
     addTo.add_option('-u', dest='backup_dir', metavar="<BACKUPFILEDIR>",
                      help="Directory where backup files are placed [default: data directories]")
-    addTo.add_option('--ddboost-storage-unit', dest='ddboost_storage_unit', metavar="<DDBOOST STORAGE UNIT>",
-                     help="Storage unit where backup files are placed on the ddboost server[default: 'GPDB']")
     addTo.add_option('-y', dest='report_dir', metavar="<REPORTFILEDIR>",
                      help="DEPRECATED OPTION: Directory where report file is placed")
     addTo.add_option('-E', dest='encoding', metavar="<encoding>",
@@ -1626,6 +1630,8 @@ def create_parser():
                            help="Default backup directory on local Data Domain system.")
     ddConfigOpt.add_option('--ddboost-remote', dest='ddboost_remote', action='store_true', default=False,
                            help="Configuration parameters for remote Data Domain system.")
+    ddConfigOpt.add_option('--ddboost-storage-unit', dest='ddboost_storage_unit', default=default_storage_unit,
+                           help="Storage unit where backup files are placed on the ddboost server")
     ddConfigOpt.add_option('--ddboost-config-remove', dest='ddboost_config_remove', action='store_true', default=False,
                            help="Remove ~/.ddconfig file.")
     ddConfigOpt.add_option('--ddboost-verify', dest='ddboost_verify', action='store_true', default=False,
