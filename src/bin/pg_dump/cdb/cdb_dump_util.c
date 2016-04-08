@@ -1807,7 +1807,7 @@ initDDSystem(ddp_inst_desc_t *ddp_inst, ddp_conn_desc_t *ddp_conn, ddp_client_in
 
 	if (createStorageUnit)
 	{
-		err = ddp_create_storage_unit(*ddp_conn, storage_unit_name);
+		err = ddp_create_storage_unit(*ddp_conn, *storage_unit_name);
 		if (err != DD_ERR_NONE) {
 			mpp_err_msg("ERROR", "ddboost", "ddboost create storage unit failed. Err = %d\n", err);
 			return err;
