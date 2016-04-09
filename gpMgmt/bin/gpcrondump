@@ -64,7 +64,6 @@ CATALOG_SCHEMA = [
 logger = gplog.get_default_logger()
 conn = None
 lock_file_name = None
-default_storage_unit = 'GPDB'
 
 class GpCronDump(Operation):
 
@@ -171,9 +170,6 @@ class GpCronDump(Operation):
         if self.list_backup_files and not self.timestamp_key:
             raise Exception('Must supply -K option when listing backup files')
 
-        if self.ddboost_storage_unit != default_storage_unit and not self.ddboost:
-            raise Exception('Must specify --ddboost option together with the --ddboost-storage-unit')
-
 
         if len(self.dump_databases) > 0:
             if self.timestamp_key and len(self.dump_databases) > 1:
@@ -194,6 +190,9 @@ class GpCronDump(Operation):
                         raise ExceptionNoStackTraceNeeded("Must supply -x <database name> because $PGDATABASE is not set")
 
         self.ddboost = options.ddboost
+
+        if self.ddboost_storage_unit and not self.ddboost:
+            raise Exception('Must specify --ddboost option together with the --ddboost-storage-unit')
 
         if self.list_backup_files and (self.ddboost or bool(self.ddboost_verify) or bool(self.ddboost_hosts) or bool(self.ddboost_user) or bool(self.ddboost_config_remove)):
             raise Exception('list backup files not supported with ddboost option')
@@ -376,7 +375,7 @@ class GpCronDump(Operation):
 
         if self.incremental:
             if self.netbackup_service_host is None:
-                self.full_dump_timestamp = get_latest_full_dump_timestamp(self.dump_databases[0], self.getBackupDirectoryRoot(), self.dump_dir, self.dump_prefix, self.ddboost)
+                self.full_dump_timestamp = get_latest_full_dump_timestamp(self.dump_databases[0], self.getBackupDirectoryRoot(), self.dump_dir, self.dump_prefix, self.ddboost, self.ddboost_storage_unit)
             else:
                 self.full_dump_timestamp = get_latest_full_ts_with_nbu(self.dump_databases[0], self.getBackupDirectoryRoot(), self.dump_prefix, self.netbackup_service_host, self.netbackup_block_size)
 
@@ -621,7 +620,9 @@ class GpCronDump(Operation):
     # Verify the DDBoost credentials using the credentials that stored on the Master
     # TODO: verify also all the hosts in self.ddboost_hosts (ping to the hosts, I think there is some Python function for that)
     def _ddboostVerify(self):
-        verifyCmdLine = os.environ['GPHOME'] + '/bin/gpddboost --verify'
+        verifyCmdLine = os.environ['GPHOME'] + '/bin/gpddboost --verify' 
+        if self.ddboost_storage_unit:
+            verifyCmdLine += ' --storage_unit_name %s' % self.ddboost_storage_unit
         logger.debug("Executing gpddboost to verify DDBoost credentials: %s" % verifyCmdLine)
         if not os.system(verifyCmdLine):
             logger.info("The specified DDBoost credentials are OK")
@@ -750,6 +751,7 @@ class GpCronDump(Operation):
 
         # If --ddboost-verify or --ddboost is specified, we check the credentials that stored on the Master
         # In case of --ddboost we force the verification (MPP-17510)
+        # TODO: 
         if bool(self.ddboost_verify) or bool(self.ddboost):
             self._ddboostVerify()
 
@@ -798,7 +800,7 @@ class GpCronDump(Operation):
                 return 0
             if self.list_filter_tables:
                 db = self.dump_databases[0]
-                self._list_filter_tables(db, get_filter_file(db, self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.ddboost))
+                self._list_filter_tables(db, get_filter_file(db, self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.ddboost, self.storage_unit_name))
                 return 0
 
             validate_current_timestamp(self.getBackupDirectoryRoot(), self.dump_dir, self.dump_prefix)
@@ -843,12 +845,12 @@ class GpCronDump(Operation):
                                                         self.netbackup_service_host, self.netbackup_block_size)
                     if self.dump_prefix and \
                        get_filter_file(dump_database, self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix,
-                                       self.ddboost, self.netbackup_service_host, self.netbackup_block_size):
+                                       self.ddboost, self.storage_unit_name, self.netbackup_service_host, self.netbackup_block_size):
                         update_filter_file(dump_database, self.master_datadir, self.backup_dir, self.master_port, self.dump_dir, self.dump_prefix,
-                                           self.ddboost, self.netbackup_service_host, self.netbackup_policy,
+                                           self.ddboost, self.storage_unit_name, self.netbackup_service_host, self.netbackup_policy,
                                            self.netbackup_schedule, self.netbackup_block_size, self.netbackup_keyword)
                     dirty_partitions = filter_dirty_tables(dirty_partitions, dump_database, self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix,
-                                                           self.ddboost, self.netbackup_service_host, self.netbackup_block_size)
+                                                           self.ddboost, self.storage_unit_name, self.netbackup_service_host, self.netbackup_block_size)
 
                     dirty_file = write_dirty_file_to_temp(dirty_partitions)
 
@@ -909,7 +911,8 @@ class GpCronDump(Operation):
                                    include_table_file = include_file,
                                    exclude_table_file = exclude_file,
                                    include_schema_file = schema_file,
-                                   ddboost = self.ddboost
+                                   ddboost = self.ddboost,
+                                   ddboost_storage_unit = self.ddboost_storage_unit
                                    ).run()
                         if self.netbackup_service_host and self.netbackup_policy and self.netbackup_schedule:
                             backup_statistics_file_with_nbu(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.netbackup_service_host,
@@ -927,7 +930,7 @@ class GpCronDump(Operation):
                             time.sleep(5)
                         os.remove(dirty_file)
                         remove_file_on_segments(self.master_port, dirty_file)
-                    write_dirty_file(self.master_datadir, dirty_partitions, self.backup_dir, self.dump_dir, self.dump_prefix, None, self.ddboost)
+                    write_dirty_file(self.master_datadir, dirty_partitions, self.backup_dir, self.dump_dir, self.dump_prefix, None, self.ddboost, self.ddboost_storage_unit)
                     if self.netbackup_service_host:
                         backup_dirty_file_with_nbu(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.netbackup_service_host, self.netbackup_policy, self.netbackup_schedule, self.netbackup_block_size, self.netbackup_keyword)
 
@@ -944,8 +947,8 @@ class GpCronDump(Operation):
                 if schema_file is not None and os.path.exists(schema_file):
                     os.remove(schema_file)
 
-                write_state_file('ao', self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, ao_partition_list, self.ddboost)
-                write_state_file('co', self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, co_partition_list, self.ddboost)
+                write_state_file('ao', self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, ao_partition_list, self.ddboost, self.ddboost_storage_unit)
+                write_state_file('co', self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, co_partition_list, self.ddboost, self.ddboost_storage_unit)
                 write_last_operation_file(self.master_datadir, self.backup_dir, last_operation_list, self.dump_dir, self.dump_prefix, timestamp_key=None, ddboost=self.ddboost)
 
                 if self.netbackup_service_host and self.netbackup_policy and self.netbackup_schedule:
@@ -957,10 +960,10 @@ class GpCronDump(Operation):
                                                     self.netbackup_policy, self.netbackup_schedule, self.netbackup_block_size, self.netbackup_keyword)
 
                 if self.ddboost:
-                    backup_report_file_with_ddboost(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix)
+                    backup_report_file_with_ddboost(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, storage_unit_name= self.ddboost_storage_unit)
                     schema_filename = generate_schema_filename(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, timestamp_str, self.ddboost)
                     if os.path.exists(schema_filename) and not self.incremental:
-                        backup_schema_file_with_ddboost(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix)
+                        backup_schema_file_with_ddboost(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.ddboost_storage_unit)
 
                 current_exit_status = max(dump_outcome['exit_status'], post_dump_outcome['exit_status'])
                 if self.replicate and current_exit_status == 0:
@@ -981,12 +984,15 @@ class GpCronDump(Operation):
                                              dump_dir = self.dump_dir,
                                              dump_prefix = self.dump_prefix,
                                              netbackup_service_host = self.netbackup_service_host,
-                                             netbackup_block_size = self.netbackup_block_size).run()
+                                             netbackup_block_size = self.netbackup_block_size,
+                                             ddboost_storage_unit = self.ddboost_storage_unit).run()
                         if self.ddboost:
-                            backup_increments_file_with_ddboost(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.full_dump_timestamp)
+                            backup_increments_file_with_ddboost(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, 
+                                                                self.full_dump_timestamp, self.ddboost_storage_unit)
 
-                        write_partition_list_file(self.master_datadir, self.backup_dir, post_dump_outcome['timestamp'], \
-                                                  self.master_port, dump_database, self.dump_dir, self.dump_prefix, self.ddboost, self.netbackup_service_host)
+                        write_partition_list_file(self.master_datadir, self.backup_dir, post_dump_outcome['timestamp'],
+                                                  self.master_port, dump_database, self.dump_dir, self.dump_prefix, 
+                                                  self.ddboost, self.netbackup_service_host, self.ddboost_storage_unit)
                         if self.netbackup_service_host:
                             backup_increments_file_with_nbu(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.full_dump_timestamp, self.netbackup_service_host, self.netbackup_policy, self.netbackup_schedule, self.netbackup_block_size, self.netbackup_keyword)
                             backup_partition_list_file_with_nbu(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.netbackup_service_host, self.netbackup_policy, self.netbackup_schedule, self.netbackup_block_size, self.netbackup_keyword)
@@ -1022,7 +1028,8 @@ class GpCronDump(Operation):
                                backup_dir = self.backup_dir,
                                dump_dir = self.dump_dir,
                                dump_prefix = self.dump_prefix,
-                               ddboost = self.ddboost).run()
+                               ddboost = self.ddboost,
+                               ddboost_storage_unit=self.ddboost_storage_unit).run()
                     if self.netbackup_service_host and self.netbackup_policy and self.netbackup_schedule:
                         backup_global_file_with_nbu(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.netbackup_service_host,
                                                     self.netbackup_policy, self.netbackup_schedule, self.netbackup_block_size, self.netbackup_keyword)
@@ -1045,7 +1052,8 @@ class GpCronDump(Operation):
                                       master_datadir = self.master_datadir,
                                       master_port = self.master_port,
                                       dump_dir = self.dump_dir,
-                                      ddboost = self.ddboost).run()
+                                      ddboost = self.ddboost,
+                                      ddboost_storage_unit=self.ddboost_storage_unit).run()
                     MailDumpEvent("Report from gpcrondump on host %s [FAILED]" % self.cur_host,
                                   "Failed for database %s with return code %d dump files rolled back. [Start=%s End=%s] Options passed [%s]"
                                   % (dump_database, current_exit_status, dump_outcome['time_start'], dump_outcome['time_end'], self.options_list)).run()
@@ -1063,7 +1071,8 @@ class GpCronDump(Operation):
                                                          dump_dir = self.dump_dir,
                                                          cleanup_date = self.cleanup_date,
                                                          cleanup_total = self.cleanup_total,
-                                                         ddboost = self.ddboost).run()
+                                                         ddboost = self.ddboost,
+                                                         ddboost_storage_unit=self.ddboost_storage_unit).run()
 
             if self.post_vacuum:
                 logger.info('Commencing post-dump vacuum...')
@@ -1105,6 +1114,7 @@ class GpCronDump(Operation):
             for dump_db_info in dump_db_info_list:
                 self._send_email(dump_db_info['dbname'], dump_db_info['exit_status'], dump_db_info['start_time'], dump_outcome['time_end'])
 
+        #TODO:
         if self.ddboost and self.replicate:
             logger.info("Backup to local Data Domain successful.")
             for name, ts in self.dump_timestamps:
@@ -1630,7 +1640,7 @@ def create_parser():
                            help="Default backup directory on local Data Domain system.")
     ddConfigOpt.add_option('--ddboost-remote', dest='ddboost_remote', action='store_true', default=False,
                            help="Configuration parameters for remote Data Domain system.")
-    ddConfigOpt.add_option('--ddboost-storage-unit', dest='ddboost_storage_unit', default=default_storage_unit,
+    ddConfigOpt.add_option('--ddboost-storage-unit', dest='ddboost_storage_unit', default=None,
                            help="Storage unit where backup files are placed on the ddboost server")
     ddConfigOpt.add_option('--ddboost-config-remove', dest='ddboost_config_remove', action='store_true', default=False,
                            help="Remove ~/.ddconfig file.")

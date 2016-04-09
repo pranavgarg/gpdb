@@ -171,7 +171,7 @@ def convert_reportfilename_to_cdatabasefilename(report_file, dump_prefix, ddboos
 
 def get_lines_from_dd_file(filename, ddboost_storage_unit):
     cmd = Command('DDBoost copy of master dump file',
-                  'gpddboost --readFile --from-file=%s --ddboost_storage_unit'
+                  'gpddboost --readFile --from-file=%s --storage_unit_name=%s'
                   % (filename , ddboost_storage_unit))
 
     cmd.run(validateAfter=True)
@@ -185,7 +185,7 @@ def check_cdatabase_exists(dbname, report_file, dump_prefix, ddboost=False, ddbo
         return False
 
     if ddboost:
-        cdatabase_contents = get_lines_from_dd_file(filename)
+        cdatabase_contents = get_lines_from_dd_file(filename, ddboost_storage_unit)
     elif netbackup_service_host:
         restore_file_with_nbu(netbackup_service_host, netbackup_block_size, filename)
         cdatabase_contents = get_lines_from_file(filename)
@@ -267,8 +267,8 @@ def get_type_ts_from_report_file(dbname, report_file, backup_type, dump_prefix, 
 def get_full_ts_from_report_file(dbname, report_file, dump_prefix, ddboost=False, ddboost_storage_unit=None, netbackup_service_host=None, netbackup_block_size=None):
     return get_type_ts_from_report_file(dbname, report_file, 'Full', dump_prefix, ddboost, ddboost_storage_unit, netbackup_service_host, netbackup_block_size)
 
-def get_incremental_ts_from_report_file(dbname, report_file, dump_prefix, ddboost=False, netbackup_service_host=None, netbackup_block_size=None):
-    return get_type_ts_from_report_file(dbname, report_file, 'Incremental', dump_prefix, ddboost, netbackup_service_host, netbackup_block_size)
+def get_incremental_ts_from_report_file(dbname, report_file, dump_prefix, ddboost=False, ddboost_storage_unit=None, netbackup_service_host=None, netbackup_block_size=None):
+    return get_type_ts_from_report_file(dbname, report_file, 'Incremental', dump_prefix, ddboost, ddboost_storage_unit, netbackup_service_host, netbackup_block_size)
 
 def get_timestamp_val(report_file_contents):
     for line in report_file_contents:
