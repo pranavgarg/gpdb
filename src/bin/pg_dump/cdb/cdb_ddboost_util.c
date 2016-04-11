@@ -248,7 +248,7 @@ main(int argc, char **argv)
 {
 	int			failCount = 0;
 	int			ret = 0;
-    bool        createStorageUnit = false;
+	bool        createStorageUnit = false;
 
 	/* This struct holds the values of the command line parameters */
 	InputOptions inputOpts;
