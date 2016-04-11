@@ -461,23 +461,18 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 		if (pszDDBoostFileName == NULL)
 			elog(ERROR, "\nDDboost filename is NULL\n");
 
+		sprintf(gpDDBoostCmdLine,
+			"%s --write-file-from-stdin --to-file=%s/%s --dd_boost_buf_size=%s ",
+			gpDDBoostPg,
+			pszDDBoostDirName,
+			pszDDBoostFileName,
+			dd_boost_buffer_size);
+
 		if (pszDDBoostStorageUnitName)
-		{	sprintf(gpDDBoostCmdLine,
-				"%s --write-file-from-stdin --to-file=%s/%s --dd_boost_buf_size=%s --storage_unit_name=%s ",
-				gpDDBoostPg,
-				pszDDBoostDirName,
-				pszDDBoostFileName,
-				dd_boost_buffer_size,
-				pszDDBoostStorageUnitName);
-		}
-		else
 		{
-			sprintf(gpDDBoostCmdLine,
-				"%s --write-file-from-stdin --to-file=%s/%s --dd_boost_buf_size=%s ",
-				gpDDBoostPg,
-				pszDDBoostDirName,
-				pszDDBoostFileName,
-				dd_boost_buffer_size);
+			sprintf(gpDDBoostCmdLine + strlen(gpDDBoostCmdLine),
+				"--storage_unit_name=%s ",
+				pszDDBoostStorageUnitName);
 		}
 	}
 
@@ -811,28 +806,17 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 			pszDDBoostFileName = formDDBoostFileName(pszBackupKey, true, is_compress);
 
 			memset(gpDDBoostCmdLine, 0, strlen(gpDDBoostCmdLine));
-	
+
+			sprintf(gpDDBoostCmdLine,
+				"%s --write-file-from-stdin --to-file=%s/%s "
+				"--dd_boost_buf_size=%s ",
+				gpDDBoostPg,
+				pszDDBoostDirName,
+				pszDDBoostFileName,
+				dd_boost_buffer_size);
+
 			if (pszDDBoostStorageUnitName)
-			{
-				sprintf(gpDDBoostCmdLine,
-					"%s --write-file-from-stdin --to-file=%s/%s "
-					"--dd_boost_buf_size=%s --storage_unit_name=%s ",
-					gpDDBoostPg,
-					pszDDBoostDirName,
-					pszDDBoostFileName,
-					dd_boost_buffer_size,
-					pszDDBoostStorageUnitName);
-			}
-			else
-			{
-				sprintf(gpDDBoostCmdLine,
-					"%s --write-file-from-stdin --to-file=%s/%s "
-					"--dd_boost_buf_size=%s ",
-					gpDDBoostPg,
-					pszDDBoostDirName,
-					pszDDBoostFileName,
-					dd_boost_buffer_size);
-			}
+				sprintf(gpDDBoostCmdLine + strlen(gpDDBoostCmdLine), "--storage_unit_name=%s", pszDDBoostStorageUnitName);
 
 			/* if user selected a compression program */
 			if (pszCompressionProgram[0] != '\0')
