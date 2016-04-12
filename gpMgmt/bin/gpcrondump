@@ -800,7 +800,7 @@ class GpCronDump(Operation):
                 return 0
             if self.list_filter_tables:
                 db = self.dump_databases[0]
-                self._list_filter_tables(db, get_filter_file(db, self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.ddboost, self.storage_unit_name))
+                self._list_filter_tables(db, get_filter_file(db, self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.ddboost, self.ddboost_storage_unit))
                 return 0
 
             validate_current_timestamp(self.getBackupDirectoryRoot(), self.dump_dir, self.dump_prefix)
@@ -845,12 +845,12 @@ class GpCronDump(Operation):
                                                         self.netbackup_service_host, self.netbackup_block_size)
                     if self.dump_prefix and \
                        get_filter_file(dump_database, self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix,
-                                       self.ddboost, self.storage_unit_name, self.netbackup_service_host, self.netbackup_block_size):
+                                       self.ddboost, self.ddboost_storage_unit, self.netbackup_service_host, self.netbackup_block_size):
                         update_filter_file(dump_database, self.master_datadir, self.backup_dir, self.master_port, self.dump_dir, self.dump_prefix,
-                                           self.ddboost, self.storage_unit_name, self.netbackup_service_host, self.netbackup_policy,
+                                           self.ddboost, self.ddboost_storage_unit, self.netbackup_service_host, self.netbackup_policy,
                                            self.netbackup_schedule, self.netbackup_block_size, self.netbackup_keyword)
                     dirty_partitions = filter_dirty_tables(dirty_partitions, dump_database, self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix,
-                                                           self.ddboost, self.storage_unit_name, self.netbackup_service_host, self.netbackup_block_size)
+                                                           self.ddboost, self.ddboost_storage_unit, self.netbackup_service_host, self.netbackup_block_size)
 
                     dirty_file = write_dirty_file_to_temp(dirty_partitions)
 

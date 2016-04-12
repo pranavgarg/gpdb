@@ -170,9 +170,11 @@ def convert_reportfilename_to_cdatabasefilename(report_file, dump_prefix, ddboos
     return "%s/%sgp_cdatabase_1_1_%s" % (dirname, dump_prefix, timestamp)
 
 def get_lines_from_dd_file(filename, ddboost_storage_unit):
-    cmd = Command('DDBoost copy of master dump file',
-                  'gpddboost --readFile --from-file=%s --storage_unit_name=%s'
-                  % (filename , ddboost_storage_unit))
+    cmdStr = 'gpddboost --readFile --from-file=%s' % filename
+    if ddboost_storage_unit:
+        cmdStr += ' --storage_unit_name=%s' % ddboost_storage_unit
+
+    cmd = Command('DDBoost copy of master dump file', cmdStr)
 
     cmd.run(validateAfter=True)
     contents = cmd.get_results().stdout.splitlines()
