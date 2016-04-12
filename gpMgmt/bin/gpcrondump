@@ -1029,7 +1029,7 @@ class GpCronDump(Operation):
                                dump_dir = self.dump_dir,
                                dump_prefix = self.dump_prefix,
                                ddboost = self.ddboost,
-                               ddboost_storage_unit=self.ddboost_storage_unit).run()
+                               ddboost_storage_unit = self.ddboost_storage_unit).run()
                     if self.netbackup_service_host and self.netbackup_policy and self.netbackup_schedule:
                         backup_global_file_with_nbu(self.master_datadir, self.backup_dir, self.dump_dir, self.dump_prefix, self.netbackup_service_host,
                                                     self.netbackup_policy, self.netbackup_schedule, self.netbackup_block_size, self.netbackup_keyword)
@@ -1640,7 +1640,7 @@ def create_parser():
                            help="Default backup directory on local Data Domain system.")
     ddConfigOpt.add_option('--ddboost-remote', dest='ddboost_remote', action='store_true', default=False,
                            help="Configuration parameters for remote Data Domain system.")
-    ddConfigOpt.add_option('--ddboost-storage-unit', dest='ddboost_storage_unit', default=None,
+    ddConfigOpt.add_option('--ddboost-storage-unit', dest='ddboost_storage_unit', action='store', default=None,
                            help="Storage unit where backup files are placed on the ddboost server")
     ddConfigOpt.add_option('--ddboost-config-remove', dest='ddboost_config_remove', action='store_true', default=False,
                            help="Remove ~/.ddconfig file.")

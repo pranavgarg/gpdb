@@ -971,7 +971,7 @@ class CreateIncrementsFile(Operation):
         return len(newlines_in_file) + 1
 
     @staticmethod
-    def validate_increments_file(dump_database, inc_file_name, master_data_dir, backup_dir, dump_dir, dump_prefix, ddboost=False, netbackup_service_host=None, netbackup_block_size=None):
+    def validate_increments_file(dump_database, inc_file_name, master_data_dir, backup_dir, dump_dir, dump_prefix, ddboost=False, ddboost_storage_unit=None, netbackup_service_host=None, netbackup_block_size=None):
 
         tstamps = get_lines_from_file(inc_file_name)
         for ts in tstamps:
@@ -981,7 +981,7 @@ class CreateIncrementsFile(Operation):
             fn = generate_report_filename(master_data_dir, backup_dir, dump_dir, dump_prefix, ts, ddboost)
             ts_in_rpt = None
             try:
-                ts_in_rpt = get_incremental_ts_from_report_file(dump_database, fn, dump_prefix, ddboost, self.ddboost_storage_unit, netbackup_service_host, netbackup_block_size)
+                ts_in_rpt = get_incremental_ts_from_report_file(dump_database, fn, dump_prefix, ddboost, ddboost_storage_unit, netbackup_service_host, netbackup_block_size)
             except Exception as e:
                 logger.error(str(e))
 

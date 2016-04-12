@@ -66,6 +66,7 @@ class GpCronDumpTestCase(unittest.TestCase):
             ## Enterprise init
             self.incremental = False
             self.ddboost = False
+            self.ddboost_storage_unit = None
             self.ddboost_hosts = None
             self.ddboost_user = None
             self.ddboost_config_remove = False
