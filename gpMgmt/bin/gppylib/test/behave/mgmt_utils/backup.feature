@@ -2670,8 +2670,8 @@ Feature: Validate command line arguments
         And there is a "heap" table "public.heap_table" in "testdb2" with data
         And the mail_contacts file does not exist
         And the mail_contacts file exists
-        And the yaml file "gppylib/test/behave/mgmt_utils/steps/data/test_email_details.yaml" stores email details is in proper format
-        When the user runs "gpcrondump -a -x testdb1 -x testdb2 --email-file gppylib/test/behave/mgmt_utils/steps/data/test_email_details.yaml --verbose"
+        And the yaml file "gppylib/test/behave/mgmt_utils/steps/data/test_email_details.yml" stores email details is in proper format
+        When the user runs "gpcrondump -a -x testdb1 -x testdb2 --email-file gppylib/test/behave/mgmt_utils/steps/data/test_email_details.yml --verbose"
         Then gpcrondump should return a return code of 0
         And verify that emails are sent to the given contacts with appropriate messages after backup of "testdb1,testdb2"
         And the mail_contacts file does not exist
@@ -2689,8 +2689,8 @@ Feature: Validate command line arguments
         And there is a "heap" table "public.heap_table" in "bkdb" with data
         And the mail_contacts file does not exist
         And the mail_contacts file exists
-        And the yaml file "gppylib/test/behave/mgmt_utils/steps/data/test_email_details_wrong_format.yaml" stores email details is not in proper format
-        When the user runs "gpcrondump -a -x bkdb --email-file gppylib/test/behave/mgmt_utils/steps/data/test_email_details_wrong_format.yaml --verbose"
+        And the yaml file "gppylib/test/behave/mgmt_utils/steps/data/test_email_details_wrong_format.yml" stores email details is not in proper format
+        When the user runs "gpcrondump -a -x bkdb --email-file gppylib/test/behave/mgmt_utils/steps/data/test_email_details_wrong_format.yml --verbose"
         Then gpcrondump should return a return code of 2
         And gpcrondump should print file is not formatted properly to stdout
         And the mail_contacts file does not exist

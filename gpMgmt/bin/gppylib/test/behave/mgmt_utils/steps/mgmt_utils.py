@@ -352,7 +352,7 @@ def impl(context, HOST, port, dir, ctxt):
 def parse_netbackup_params():
     current_path = os.path.realpath(__file__)
     current_dir = os.path.dirname(current_path)
-    netbackup_yaml_file_path = os.path.join(current_dir, 'data/netbackup_behave_config.yaml')
+    netbackup_yaml_file_path = os.path.join(current_dir, 'data/netbackup_behave_config.yml')
     try:
         nbufile = open(netbackup_yaml_file_path, 'r')
     except IOError,e:
