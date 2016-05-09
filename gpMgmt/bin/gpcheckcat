@@ -387,6 +387,7 @@ def connect2run(qry, col=None):
     threads = []
     i = 1
 
+    sysinfo.debug_log_mem_usage()
     # parallelise queries
     for dbid in GV.cfg:
         c = GV.cfg[dbid]
@@ -405,6 +406,7 @@ def connect2run(qry, col=None):
             threads = []
 
         i += 1
+    sysinfo.debug_log_mem_usage()
 
     # process the rest of threads
     batch.extend(processThread(threads))
