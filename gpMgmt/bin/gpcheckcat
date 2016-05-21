@@ -38,6 +38,7 @@ try:
     from pygresql import pg
     from gpcheckcat_modules.unique_index_violation_check import UniqueIndexViolationCheck
     from gpcheckcat_modules.leaked_schema_dropper import LeakedSchemaDropper
+    from gpcheckcat_modules.repair_missing_extraneous import RepairMissingExtraneous
 except ImportError, e:
     sys.exit('Error: unable to import module: ' + str(e))
 
@@ -2880,6 +2881,8 @@ def checkTableForeignKey(cat):
                     setError(ERROR_REMOVE)
                     removeFastSequence(db)
 
+                return curs.getresult()
+
         except Exception, e:
             setError(ERROR_NOREPAIR)
             GV.foreignKeyStatus = False
@@ -2935,10 +2938,45 @@ def checkMissingEntry():
 
     # looks up information in the catalog:
     tables = GV.catalog.getCatalogTables()
+    sql_repair_files = []
+    for catalog_table_obj in sorted(tables):
+        table_name = catalog_table_obj.getTableName()
+        fkeylist = catalog_table_obj.getForeignKeys()
+        entries = checkTableMissingEntry(catalog_table_obj)
+        obj = RepairMissingExtraneous()
 
-    for cat in sorted(tables):
-        checkTableMissingEntry(cat)
+        sql_repair_contents = obj.create_extra_repair_sql(table_name, entries, fkeylist)
+        if sql_repair_contents:
+            sql_repair_files.append(extraRepair(table_name, sql_repair_contents))
 
+    script = ""
+    c = GV.cfg[1]
+    if sql_repair_files:
+        for sql_repair_file, description in sql_repair_files:
+            script += description
+            script += 'psql -X -a -h %s -p %i -f %s "%s" > %s.out 2>&1\n' % \
+                      (c['hostname'], c['port'], sql_repair_file, GV.dbname, sql_repair_file)
+
+            generate_repair_script(script)
+
+def extraRepair(catalog_table, contents):
+    filename = '%s.extra_%s.%s.sql' % (GV.dbname, catalog_table, TIMESTAMP)
+    fullpath = '%s/%s' % (GV.opt['-g'], filename)
+    file_name = None
+    try:
+        file_name = open(filename, 'w')
+        file_name.writelines(contents)
+    except Exception, e:
+        logger.fatal('Unable to create file_name "%s": %s' % (fullpath, str(e)))
+        sys.exit(1)
+    finally:
+        if file_name:
+            file_name.close()
+
+    description = '\necho "something extra"\n'
+    # file_name.write(contents)
+    # file_name.close()
+    return description, filename
 
 # -------------------------------------------------------------------------------
 def checkTableMissingEntry(cat):
@@ -3003,6 +3041,9 @@ def checkTableMissingEntry(cat):
             processMissingDuplicateEntryResult(catname, fields, results, "missing")
             if catname == 'pg_type':
                 generateVerifyFile(catname, fields, results, 'missing_extraneous')
+
+            return results
+
     except Exception, e:
         setError(ERROR_NOREPAIR)
         GV.missingEntryStatus = False

@@ -171,3 +171,13 @@ Feature: gpcheckcat tests
         When the user runs "gpcheckcat -R persistent db1"
         Then gpcheckcat should print Failed test\(s\) that are not reported here: persistent to stdout
 
+
+        @extra
+       Scenario : extra
+        Given database "extra" is dropped and recreated
+        And the user runs "psql extra -c "CREATE TABLE foo(i int)"
+        And the oid from foo is stored
+        And the user runs this on a segment "set allow_system_table_mods=DML;delete from pg_class where relname='foo'"
+        And the user runs "drop table if exists foo"
+        And the user runs this on a segment "select * from gp_dist_random('pg_attribute') where attrelid='saved_oid'"
+
