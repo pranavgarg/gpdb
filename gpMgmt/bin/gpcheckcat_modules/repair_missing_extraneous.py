@@ -16,7 +16,9 @@ class RepairMissingExtraneous:
             for entry in entries:
                 oids_to_remove.add(entry[0])
 
-        if fkeylist:
+        if catalog_table == "pg_class":
+            oid_column = "oid"
+        elif fkeylist:
             for fkey in fkeylist:
                 if fkey.getPkeyTableName() == "pg_class":
                     oid_column = fkey.getColumns()[0]

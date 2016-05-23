@@ -2947,6 +2947,7 @@ def checkMissingEntry():
 
         sql_repair_contents = obj.create_extra_repair_sql(table_name, entries, fkeylist)
         if sql_repair_contents:
+            __create_repair_dir()
             sql_repair_files.append(extraRepair(table_name, sql_repair_contents))
 
     script = ""
@@ -2964,7 +2965,7 @@ def extraRepair(catalog_table, contents):
     fullpath = '%s/%s' % (GV.opt['-g'], filename)
     file_name = None
     try:
-        file_name = open(filename, 'w')
+        file_name = open(fullpath, 'w')
         file_name.writelines(contents)
     except Exception, e:
         logger.fatal('Unable to create file_name "%s": %s' % (fullpath, str(e)))
@@ -2974,8 +2975,6 @@ def extraRepair(catalog_table, contents):
             file_name.close()
 
     description = '\necho "something extra"\n'
-    # file_name.write(contents)
-    # file_name.close()
     return description, filename
 
 # -------------------------------------------------------------------------------
@@ -3701,6 +3700,13 @@ def runOneCheck(name):
             GV.failedChecks.append(name)
 
 
+def __create_repair_dir():
+    try:
+        if not os.path.exists(GV.opt['-g']):
+            os.mkdir(GV.opt['-g'])
+    except Exception, e:
+        logger.fatal('Unable to create directory "%s": %s' % (GV.opt['-g'], str(e)))
+        sys.exit(1)
 
 #-------------------------------------------------------------------------------
 def runAllChecks():
@@ -3722,13 +3728,7 @@ def runAllChecks():
              len(GV.Owners) > 0 or
              len(GV.Policies) > 0)
     if GV.opt['-g'] != None and fixes:
-        try:
-            if not os.path.exists(GV.opt['-g']):
-                os.mkdir(GV.opt['-g'])
-        except Exception, e:
-            logger.fatal('Unable to create directory "%s": %s' % (GV.opt['-g'], str(e)))
-            sys.exit(1)
-
+        __create_repair_dir()
         logger.debug('Building catalog repair scripts')
         # build a script to run these files
         script = ''
