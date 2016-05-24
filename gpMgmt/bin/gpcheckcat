@@ -150,9 +150,6 @@ class Global():
         # array of SQL statements. Key is dbid
         self.ReSync = {}
 
-        # Indexes to rebuild
-        self.Reindex = []
-
         # constraints which are actually unenforcable
         self.Constraints = []
 
@@ -188,7 +185,6 @@ def usage(exitarg=None):
 ###############################
 
 def getversion():
-    versions = ["3.2", "3.3", "4.0", "4.1", "main"]
     db = connect()
     curs = db.query('''
     select regexp_replace(version(),
@@ -3479,11 +3475,6 @@ name_repair = {
             "description": "Check if needs repairing segment",
             "fn": lambda maybeRemove, catmod_guc, seg: checkSegmentRepair(maybeRemove, catmod_guc, seg)
         },
-    "reindex":
-        {
-            "description": "Check if needs repair file for reindex",
-            "fn": lambda: checkReindexRepair()
-        },
     "constraints":
         {
             "description": "Check if needs repair file to fix constraints",
@@ -3710,7 +3701,6 @@ def runAllChecks():
              len(GV.AdjustConname) > 0 or
              len(GV.DemoteConstraint) > 0 or
              len(GV.ReSync) > 0 or
-             len(GV.Reindex) > 0 or
              len(GV.Constraints) > 0 or
              len(GV.Owners) > 0 or
              len(GV.Policies) > 0)
@@ -3776,27 +3766,6 @@ def generate_repair_script(script):
 
     myprint('')
     myprint('[INFO]: repair scripts generated: %s' % path)
-
-
-def checkReindexRepair():
-    if len(GV.Reindex) > 0:
-        # dbname.type.timestamp.sql
-        filename = '%s.%s.%s.sql' % (GV.dbname, "reindex", TIMESTAMP)
-        fullpath = '%s/%s' % (GV.opt['-g'], filename)
-        try:
-            file = open(fullpath, 'w')
-        except Exception, e:
-            logger.fatal('Unable to create file "%s": %s' % (fullpath, str(e)))
-            sys.exit(1)
-
-        description = '\necho "Reindexing potentially damaged bitmap indexes"\n'
-        for r in GV.Reindex:
-            file.write('REINDEX INDEX %s;\n' % r)
-        file.close()
-        return description, filename
-    else:
-        return None, None
-
 
 def checkConstraintsRepair():
     if len(GV.Constraints) > 0:
