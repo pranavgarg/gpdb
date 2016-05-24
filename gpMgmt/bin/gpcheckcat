@@ -2931,7 +2931,7 @@ def fkQuery(catname, pkcatname, fkeystr, pkeystr, pkeys, cat1pkeys):
 # -------------------------------------------------------------------------------
 def checkMissingEntry():
     logger.info('-----------------------------------')
-    logger.info('Performing cross consistency tests: check for missing or extraneous entries')
+    logger.info('Performing cross consistency tests: check for missing or extraneous issues')
 
     if GV.missingEntryStatus == None:
         GV.missingEntryStatus = True
@@ -2941,11 +2941,14 @@ def checkMissingEntry():
     sql_repair_files = []
     for catalog_table_obj in sorted(tables):
         table_name = catalog_table_obj.getTableName()
-        fkeylist = catalog_table_obj.getForeignKeys()
-        entries = checkTableMissingEntry(catalog_table_obj)
-        obj = RepairMissingExtraneous()
+        issues = checkTableMissingEntry(catalog_table_obj)
+        if not issues:
+            return
+        repair_obj = RepairMissingExtraneous(catalog_table_obj=catalog_table_obj, db_name=GV.dbname,
+                                             repair_script_path= GV.opt['-g'], issues=issues, pk_name=pk_name)
 
-        sql_repair_contents = obj.create_extra_repair_sql(table_name, entries, fkeylist)
+        _, pk_name = getPrimaryKeyColumn(table_name, catalog_table_obj.getPrimaryKey())
+        sql_repair_contents = repair_obj.create_repair_sql()
         if sql_repair_contents:
             __create_repair_dir()
             sql_repair_files.append(extraRepair(table_name, sql_repair_contents))
@@ -2960,22 +2963,6 @@ def checkMissingEntry():
 
             generate_repair_script(script)
 
-def extraRepair(catalog_table, contents):
-    filename = '%s.extra_%s.%s.sql' % (GV.dbname, catalog_table, TIMESTAMP)
-    fullpath = '%s/%s' % (GV.opt['-g'], filename)
-    file_name = None
-    try:
-        file_name = open(fullpath, 'w')
-        file_name.writelines(contents)
-    except Exception, e:
-        logger.fatal('Unable to create file_name "%s": %s' % (fullpath, str(e)))
-        sys.exit(1)
-    finally:
-        if file_name:
-            file_name.close()
-
-    description = '\necho "something extra"\n'
-    return description, filename
 
 # -------------------------------------------------------------------------------
 def checkTableMissingEntry(cat):
@@ -3890,9 +3877,9 @@ def checkSegmentRepair(maybeRemove, catmod_guc, seg):
 
     # unique
     lines = set()
-    if GV.Remove.has_key(seg):
+    if GV.Remove.has_key(seg):#foreign_key check
         lines = lines.union(GV.Remove[seg])
-    if GV.AdjustConname.has_key(seg):
+    if GV.AdjustConname.has_key(seg):#part_constraint
         lines = lines.union(GV.AdjustConname[seg])
     if GV.DemoteConstraint.has_key(seg):
         lines = lines.union(GV.DemoteConstraint[seg])
@@ -4237,6 +4224,17 @@ def processForeignKeyResult(catname, pkcatname, colname, allValues):
         gpObj.addForeignKeyIssue(issue)
 
 
+def getPrimaryKeyColumn(catname, pknames):
+    # We have to look up key to report (pg_pltemplate)
+    gpObjName = catname
+    gpColName = None
+    if catname in TableMainColumn:
+        gpColName = TableMainColumn[catname][0]
+        gpObjName = TableMainColumn[catname][1]
+    elif 'oid' in pknames:
+        gpColName = 'oid'
+    return gpObjName, gpColName
+
 # -------------------------------------------------------------------------------
 def processACLResult(catname, colname, allValues):
     '''
@@ -4245,16 +4243,9 @@ def processACLResult(catname, colname, allValues):
     				1 | gptest | None | {=Tc/nmiller,nmiller=CTc/nmiller,person2=CTc/nmiller}
     '''
 
-    gpObjName = catname
-    gpColName = None
     pknames = [i for i in colname[1:-2]]
 
-    # We have to look up key to report (pg_pltemplate)
-    if catname in TableMainColumn:
-        gpColName = TableMainColumn[catname][0]
-        gpObjName = TableMainColumn[catname][1]
-    elif 'oid' in pknames:
-        gpColName = 'oid'
+    gpObjName, gpColName = getPrimaryKeyColumn(catname, pknames)
 
     # Process entries
     for row in allValues:
