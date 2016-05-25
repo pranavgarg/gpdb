@@ -526,6 +526,7 @@ def checkDistribPolicy():
         myprint('[ERROR] executing test: checkDistribPolicy')
         myprint('  Execution error: ' + str(e))
 
+    checkConstraintsRepair()
 
 #############
 def checkPartitionIntegrity():
@@ -723,6 +724,7 @@ def checkPartitionIntegrity():
 
     db.close()
 
+    checkPoliciesRepair()
 
 #############
 # A dictionary of SQL statements for checkPartitionRegularity()
@@ -2231,6 +2233,8 @@ def checkOwners():
         # Check owners in pg_opclass
         # ...
 
+    checkOwnersRepair()
+
 
 def checkPersistentTables():
     logger.info('-----------------------------------')
@@ -2938,12 +2942,10 @@ def checkMissingEntry():
     for catalog_table_obj in sorted(tables):
         table_name = catalog_table_obj.getTableName()
         issues = checkTableMissingEntry(catalog_table_obj)
-        if not issues:
-            return
+        _, pk_name = getPrimaryKeyColumn(table_name, catalog_table_obj.getPrimaryKey())
         repair_obj = RepairMissingExtraneous(catalog_table_obj=catalog_table_obj, db_name=GV.dbname,
                                              repair_script_path= GV.opt['-g'], issues=issues, pk_name=pk_name)
 
-        _, pk_name = getPrimaryKeyColumn(table_name, catalog_table_obj.getPrimaryKey())
         sql_repair_contents = repair_obj.create_repair_sql()
         if sql_repair_contents:
             __create_repair_dir()
@@ -3700,10 +3702,7 @@ def runAllChecks():
     fixes = (len(GV.Remove) > 0 or
              len(GV.AdjustConname) > 0 or
              len(GV.DemoteConstraint) > 0 or
-             len(GV.ReSync) > 0 or
-             len(GV.Constraints) > 0 or
-             len(GV.Owners) > 0 or
-             len(GV.Policies) > 0)
+             len(GV.ReSync) > 0)
     if GV.opt['-g'] != None and fixes:
         __create_repair_dir()
         logger.debug('Building catalog repair scripts')
@@ -3736,22 +3735,21 @@ def runAllChecks():
             script += segment_repair_script
 
         c = GV.cfg[1]
-        for name in name_repair:
-            # skip checking on the segment repeatedly
-            if name in ['segment']:
-                continue
-            description, repair_filename = name_repair[name]["fn"]()
-            if repair_filename != None:
-                script += description
-                script += 'psql -X -a -h %s -p %i -f %s "%s" > %s.out 2>&1\n' % \
-                          (c['hostname'], c['port'], repair_filename, GV.dbname, repair_filename)
-
         generate_repair_script(script)
 
     if GV.retcode >= ERROR_NOREPAIR:
         logger.warn('[WARN]: unable to generate repairs for some issues')
     logger.info("Check complete")
 
+def create_bash_repair_script(repair_filename, description):
+    script = ""
+    c = GV.cfg[1]
+    if repair_filename != None:
+        script += description
+        script += 'psql -X -a -h {hostname} -p {port} -f {filename} ' \
+                  '"{dbname}" > {filename}.out 2>&1\n'.format(hostname=c['hostname'], port=c['port'],
+                                                              filename=repair_filename,dbname=GV.dbname)
+        generate_repair_script(script)
 
 def generate_repair_script(script):
     try:
@@ -3767,69 +3765,39 @@ def generate_repair_script(script):
     myprint('')
     myprint('[INFO]: repair scripts generated: %s' % path)
 
-def checkConstraintsRepair():
-    if len(GV.Constraints) > 0:
-        # dbname.type.timestamp.sql
-        filename = '%s.%s.%s.sql' % (GV.dbname, "removeconstraints", TIMESTAMP)
+def generic_repair(something, filename_type, description):
+    __create_repair_dir()
+    if len(something) > 0:
+        filename = '%s.%s.%s.sql' % (GV.dbname, filename_type, TIMESTAMP)
         fullpath = '%s/%s' % (GV.opt['-g'], filename)
+        file = None
         try:
             file = open(fullpath, 'w')
+            for r in something:
+                file.write('%s\n' % r)
+            create_bash_repair_script(filename, description)
         except Exception, e:
             logger.fatal('Unable to create file "%s": %s' % (fullpath, str(e)))
             sys.exit(1)
+        finally:
+            if file:
+                file.close()
 
-        description = '\necho "Dropping invalid unique constraints"\n'
-        GV.Constraints = list(set(GV.Constraints))
-        for r in GV.Constraints:
-            file.write('%s\n' % r)
-        file.close()
-        return description, filename
-    else:
-        return None, None
-
+def checkConstraintsRepair():
+    description = '\necho "Dropping invalid unique constraints"\n'
+    generic_repair(GV.Constraints, "removeconstraints", description)
 
 def checkOwnersRepair():
-    if len(GV.Owners) > 0:
-        # Previously we removed duplicate statements from the "Owners" list
-        # by casting it through a "list(set(...))", however this does not work
-        # since the order of items in the list is important for correct results.
-
-        # dbname.type.timestamp.sql
-        filename = '%s.%s.%s.sql' % (GV.dbname, "fixowners", TIMESTAMP)
-        fullpath = '%s/%s' % (GV.opt['-g'], filename)
-        try:
-            file = open(fullpath, 'w')
-        except Exception, e:
-            logger.fatal('Unable to create file "%s": %s' % (fullpath, str(e)))
-            sys.exit(1)
-
-        description = '\necho "Correcting table ownership"\n'
-        for r in GV.Owners:
-            file.write('%s\n' % r)
-        file.close()
-        return description, filename
-    else:
-        return None, None
+    description = '\necho "Correcting table ownership"\n'
+    # Previously we removed duplicate statements from the "Owners" list
+    # by casting it through a "list(set(...))", however this does not work
+    # since the order of items in the list is important for correct results.
+    generic_repair(GV.Owners, "fixowner", description)
 
 def checkPoliciesRepair():
     # changes to distribution policies
-    if len(GV.Policies) > 0:
-        # dbname.type.timestamp.sql
-        filename = '%s.%s.%s.sql' % (GV.dbname, "fixdistribution", TIMESTAMP)
-        fullpath = '%s/%s' % (GV.opt['-g'], filename)
-        try:
-            file = open(fullpath, 'w')
-        except Exception, e:
-            logger.fatal('Unable to create file "%s": %s' % (fullpath, str(e)))
-            sys.exit(1)
-
-        description = '\necho "Fixing distribution policies"\n'
-        for r in GV.Policies:
-            file.write('%s\n' % r)
-        file.close()
-        return description, filename
-    else:
-        return None, None
+    description = '\necho "Fixing distribution policies"\n'
+    generic_repair(GV.Policies, "fixdistribution", description)
 
 
 def checkSegmentRepair(maybeRemove, catmod_guc, seg):

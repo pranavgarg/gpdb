@@ -158,6 +158,39 @@ Feature: gpcheckcat tests
         And the user runs "dropdb db2"
         And the path "gpcheckcat.repair.*" is removed from current working directory
 
+    @constraint
+    Scenario: gpcheckcat should find constraint error and produce timestamped repair scripts from -A (all databases) option
+        Given database "test_constraint" is dropped and recreated
+        And the path "gpcheckcat.repair.*" is removed from current working directory
+        And the user runs "psql test_constraint -f gppylib/test/behave/mgmt_utils/steps/data/gpcheckcat/create_invalid_constraint.sql"
+        Then psql should return a return code of 0
+        When the user runs "gpcheckcat -R distribution_policy test_constraint"
+        Then gpcheckcat should return a return code of 1
+        Then gpcheckcat should print repair scripts generated to stdout
+        Then the path "gpcheckcat.repair.*" is found in cwd "1" times
+        #Then the user runs repairt script
+        #When the user runs "gpcheckcat test_constraint"
+        #Then gpcheckcat should return a return code of 0
+        And the user runs "dropdb test_constraint"
+        And the path "gpcheckcat.repair.*" is removed from current working directory
+
+    @policy
+    Scenario: gpcheckcat should find policy error and produce timestamped repair scripts from -A (all databases) option
+        Given database "test_policy" is dropped and recreated
+        And the path "gpcheckcat.repair.*" is removed from current working directory
+        And there is a "heap" partition table "public.heap_part_table" in "test_policy" with data
+        And the user runs "psql test_policy -f gppylib/test/behave/mgmt_utils/steps/data/gpcheckcat/create_inconsistent_policy.sql"
+        Then psql should return a return code of 0
+        When the user runs "gpcheckcat -R part_integrity test_policy"
+        Then gpcheckcat should return a return code of 1
+        Then gpcheckcat should print repair scripts generated to stdout
+        Then the path "gpcheckcat.repair.*" is found in cwd "1" times
+        #Then the user runs repairt script
+        #When the user runs "gpcheckcat test_constraint"
+        #Then gpcheckcat should return a return code of 0
+        And the user runs "dropdb test_policy"
+        And the path "gpcheckcat.repair.*" is removed from current working directory
+
     @persistent
     Scenario: gpcheckcat should find persistence errors
         Given database "db1" is dropped and recreated
@@ -172,12 +205,12 @@ Feature: gpcheckcat tests
         Then gpcheckcat should print Failed test\(s\) that are not reported here: persistent to stdout
 
 
-        @extra
-       Scenario : extra
-        Given database "extra" is dropped and recreated
-        And the user runs "psql extra -c "CREATE TABLE foo(i int)"
-        And the oid from foo is stored
-        And the user runs this on a segment "set allow_system_table_mods=DML;delete from pg_class where relname='foo'"
-        And the user runs "drop table if exists foo"
-        And the user runs this on a segment "select * from gp_dist_random('pg_attribute') where attrelid='saved_oid'"
+        #@extra
+        #Scenario : extra
+        #Given database "extra" is dropped and recreated
+        #And the user runs "psql extra -c "CREATE TABLE foo(i int)"
+        #And the oid from foo is stored
+        #And the user runs this on a segment "set allow_system_table_mods=DML;delete from pg_class where relname='foo'"
+        #And the user runs "drop table if exists foo"
+        #And the user runs this on a segment "select * from gp_dist_random('pg_attribute') where attrelid='saved_oid'"
 
