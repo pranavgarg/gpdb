@@ -27,24 +27,3 @@ class RepairMissingExtraneous:
 
         return repair_sql_contents
 
-    def create_repair_sql(self,  repair_type_prefix, timestamp):
-
-        contents = self.get_extra_repair_sql_contents()
-        sql_file_name = '{0}.{1}_{2}.{3}.sql'.format(self.db_name, repair_type_prefix,
-                                                     self._table_name,timestamp)
-        repair_script_path = '{0}/{1}'.format(self._repair_script_path, sql_file_name)
-
-        sql_file_obj = None
-        try:
-            sql_file_obj = open(repair_script_path, 'w')
-            sql_file_obj.writelines(contents)
-        except Exception, e:
-            logger.fatal('Unable to create file "%s": %s' % (repair_script_path, str(e)))
-            sys.exit(1)
-        finally:
-            if sql_file_obj:
-                sql_file_obj.close()
-
-        description = '\necho "something extra"\n'
-        return description, sql_file_name
-

@@ -2938,32 +2938,19 @@ def checkMissingEntry():
 
     # looks up information in the catalog:
     tables = GV.catalog.getCatalogTables()
-    sql_repair_files = []
     for catalog_table_obj in sorted(tables):
         table_name = catalog_table_obj.getTableName()
         issues = checkTableMissingEntry(catalog_table_obj)
         if not issues:
-            return
+            continue
 
         _, pk_name = getPrimaryKeyColumn(table_name, catalog_table_obj.getPrimaryKey())
         repair_obj = RepairMissingExtraneous(catalog_table_obj=catalog_table_obj, db_name=GV.dbname,
                                              repair_script_path= GV.opt['-g'], issues=issues, pk_name=pk_name)
 
-        sql_repair_contents = repair_obj.create_repair_sql()
-        if sql_repair_contents:
-            __create_repair_dir()
-            sql_repair_files.append(extraRepair(table_name, sql_repair_contents))
+        sql_repair_contents = repair_obj.get_extra_repair_sql_contents()
 
-    script = ""
-    c = GV.cfg[1]
-    if sql_repair_files:
-        for sql_repair_file, description in sql_repair_files:
-            script += description
-            script += 'psql -X -a -h %s -p %i -f %s "%s" > %s.out 2>&1\n' % \
-                      (c['hostname'], c['port'], sql_repair_file, GV.dbname, sql_repair_file)
-
-            generate_repair_script(script)
-
+    generic_repair(sql_repair_contents, "extra", "some desc")
 
 # -------------------------------------------------------------------------------
 def checkTableMissingEntry(cat):
@@ -3748,7 +3735,7 @@ def create_bash_repair_script(repair_filename, description):
     script = ""
     c = GV.cfg[1]
     if repair_filename != None:
-        script += description
+        script += "\necho {0}\n".format(description)
         script += 'psql -X -a -h {hostname} -p {port} -f {filename} ' \
                   '"{dbname}" > {filename}.out 2>&1\n'.format(hostname=c['hostname'], port=c['port'],
                                                               filename=repair_filename,dbname=GV.dbname)
