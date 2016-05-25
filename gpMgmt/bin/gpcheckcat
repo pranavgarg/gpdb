@@ -2942,6 +2942,9 @@ def checkMissingEntry():
     for catalog_table_obj in sorted(tables):
         table_name = catalog_table_obj.getTableName()
         issues = checkTableMissingEntry(catalog_table_obj)
+        if not issues:
+            return
+
         _, pk_name = getPrimaryKeyColumn(table_name, catalog_table_obj.getPrimaryKey())
         repair_obj = RepairMissingExtraneous(catalog_table_obj=catalog_table_obj, db_name=GV.dbname,
                                              repair_script_path= GV.opt['-g'], issues=issues, pk_name=pk_name)
