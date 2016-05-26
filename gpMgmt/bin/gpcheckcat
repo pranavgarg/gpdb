@@ -2938,6 +2938,9 @@ def checkMissingEntry():
 
     # looks up information in the catalog:
     tables = GV.catalog.getCatalogTables()
+    sql_repair_contents = []
+    import pdb
+    pdb.set_trace()
     for catalog_table_obj in sorted(tables):
         table_name = catalog_table_obj.getTableName()
         issues = checkTableMissingEntry(catalog_table_obj)
@@ -2948,7 +2951,7 @@ def checkMissingEntry():
         repair_obj = RepairMissingExtraneous(catalog_table_obj=catalog_table_obj, db_name=GV.dbname,
                                              repair_script_path= GV.opt['-g'], issues=issues, pk_name=pk_name)
 
-        sql_repair_contents = repair_obj.get_extra_repair_sql_contents()
+        sql_repair_contents.append(repair_obj.get_extra_repair_sql_contents())
 
     generic_repair(sql_repair_contents, "extra", "some desc")
 
@@ -3764,7 +3767,9 @@ def generic_repair(something, filename_type, description):
         try:
             file = open(fullpath, 'w')
             for r in something:
-                file.write('%s\n' % r)
+                myprint("do i get here?")
+                myprint(r)
+                file.write(r)
             create_bash_repair_script(filename, description)
         except Exception, e:
             logger.fatal('Unable to create file "%s": %s' % (fullpath, str(e)))
