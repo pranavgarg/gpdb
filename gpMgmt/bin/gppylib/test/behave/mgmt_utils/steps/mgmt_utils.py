@@ -3802,6 +3802,7 @@ ssh %s "source %s; export PGUSER=%s; export PGPORT=%s; export PGOPTIONS=\\\"-c g
 def impl(context, query, dbname):
     host, port = get_primary_segment_host_port()
     psql_cmd = "PGDATABASE=\'%s\' PGOPTIONS=\'-c gp_session_role=utility\' psql -h %s -p %s -c \"%s\"; " % (dbname, host, port, query)
+    print psql_cmd
     Command(name='Running Remote command: %s' % psql_cmd, cmdStr = psql_cmd).run(validateAfter=True)
 
 @then( 'The path "{path}" is removed from current working directory')
