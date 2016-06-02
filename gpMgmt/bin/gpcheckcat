@@ -2941,32 +2941,25 @@ def checkMissingEntry():
     for catalog_table_obj in sorted(tables):
         table_name = catalog_table_obj.getTableName()
         issues = checkTableMissingEntry(catalog_table_obj)
+
         if not issues:
             continue
 
         _, pk_name = getPrimaryKeyColumn(table_name, catalog_table_obj.getPrimaryKey())
-        import pdb
-        pdb.set_trace()
-        repair_obj = RepairMissingExtraneous(catalog_table_obj=catalog_table_obj, db_name=GV.dbname,
-                                             repair_script_path=GV.opt['-g'],
-                                             issues=issues, pk_name=pk_name, segmentinfo_map=GV.report_cfg)
+        repair_obj = RepairMissingExtraneous(catalog_table_obj=catalog_table_obj, issues=issues, pk_name=pk_name)
 
-        # TODO: Associate issues with the segment (know content to which
-        #       segment)
-        # TODO: create a mapped content of the relation from segment to sql
-        #       statement
-        sql_repair_contents = repair_obj.get_extra_repair_sql_contents()
+        oids_to_segment_mapping = repair_obj.get_extra_or_missing_oids_in_segments()
         # TODO: We need to pass the value here that it's an extra
-        # TODO: We need to make sure that we are passing the correct port and
-        #       segment, we get this from the 'issues'
-        # XXX: segment id is the content id
-        segmentids = repair_obj.get_tentative_segments()
-        for segid in segmentids:
-            myprint(GV.report_cfg[segid])
+        sql_repair_contents = []
+        segment_ids_torepair = set()
+
+        for oid, segment_ids in oids_to_segment_mapping.iteritems():
+            sql_repair_contents.append(repair_obj.get_delete_sql(oid))
+            segment_ids_torepair.update(segment_ids)
 
         generic_repair(sql_repair_contents, "extra", "some desc",
                        timestamp=datetime.datetime.now().strftime("%Y%m%d%H%M%S"),
-                       catalog_name=table_name)
+                       catalog_name=table_name, segment_ids=segment_ids_torepair)
 
 # -------------------------------------------------------------------------------
 def checkTableMissingEntry(cat):
@@ -3750,22 +3743,26 @@ def runAllChecks():
     logger.info("Check complete")
 
 def create_bash_repair_script(repair_filename, description, catalog_issue_name=None, catalog_name=None,
-                              content_id=None):
-    script = ""
-    # TODO: This is hardcoded to master database
-    c = GV.cfg[1]
-    if repair_filename != None:
-        script += '\necho "{0}"\n'.format(description)
-        script += 'psql -X -a -h {hostname} -p {port} -f {filename} ' \
-                  '"{dbname}" > {filename}.out 2>&1\n'.format(hostname=c['hostname'], port=c['port'],
-                                                              filename=repair_filename, dbname=GV.dbname)
-        generate_repair_script(script, catalog_issue_name, catalog_name, GV.dbname)
+                              segment_ids=None):
+    if segment_ids is None:
+        segment_ids = [GV.cfg[1]]
+
+    for segment_id in segment_ids:
+        c = GV.report_cfg[segment_id]
+        script = ""
+        if repair_filename != None:
+            script += '\necho "{0}"\n'.format(description)
+            script += 'PGOPTIONS=\'-c gp_session_role=utility\' psql -X -a -h {hostname} -p {port} -f {filename} ' \
+                    '"{dbname}" > {filename}.out 2>&1\n'.format(hostname=c['hostname'], port=c['port'],
+                                                                filename=repair_filename, dbname=GV.dbname)
+            generate_repair_script(script, catalog_issue_name, catalog_name, GV.dbname)
 
 def generate_repair_script(script, catalog_issue_name=None, catalog_name=None, dbname=None):
     try:
         repair_script_name = REPAIR_SCRIPT
-        if catalog_issue_name and catalog_name and dbname:
-            repair_script_name = '%s_%s_%s_%s.sh' % (catalog_issue_name, dbname, catalog_name, TIMESTAMP)
+        # TODO: Need to refactor this part as this looks very weird
+        #if catalog_issue_name and catalog_name and dbname:
+        #    repair_script_name = '%s_%s_%s_%s.sh' % (catalog_issue_name, dbname, catalog_name, TIMESTAMP)
 
         path = '%s/%s' % (GV.opt['-g'], repair_script_name)
         file = open(path, 'a')
@@ -3779,9 +3776,11 @@ def generate_repair_script(script, catalog_issue_name=None, catalog_name=None, d
     myprint('')
     myprint('[INFO]: repair scripts generated: %s' % path)
 
-def generic_repair(something, filename_type, description, timestamp=TIMESTAMP, catalog_issue_name=None, catalog_name=None):
+def generic_repair(something, filename_type, description, timestamp=TIMESTAMP, catalog_issue_name=None,
+                   catalog_name=None,segment_ids=None):
     __create_repair_dir()
     if len(something) > 0:
+        # TODO: Make the sql file name have the catalog table name
         filename = '%s.%s.%s.sql' % (GV.dbname, filename_type, timestamp)
         fullpath = '%s/%s' % (GV.opt['-g'], filename)
         file = None
@@ -3791,7 +3790,9 @@ def generic_repair(something, filename_type, description, timestamp=TIMESTAMP, c
                 myprint("do i get here?")
                 myprint(r)
                 file.write(r + "\n")
-            create_bash_repair_script(filename, description, catalog_issue_name=filename_type, catalog_name=catalog_name)
+            create_bash_repair_script(filename, description,
+                                      catalog_issue_name=filename_type,
+                                      catalog_name=catalog_name, segment_ids=segment_ids)
         except Exception, e:
             logger.fatal('Unable to create file "%s": %s' % (fullpath, str(e)))
             sys.exit(1)
