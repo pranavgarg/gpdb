@@ -1072,7 +1072,7 @@ def verify_file_contents(context, file_type, file_dir, text_find, should_contain
     elif file_type == 'cdatabase':
         fn = '%sgp_cdatabase_-1_1_%s' % (context.dump_prefix, context.backup_timestamp)
     elif file_type == 'dump':
-        fn = '%sgp_dump_1_1_%s.gz' % (context.dump_prefix, context.backup_timestamp)
+        fn = '%sgp_dump_-1_1_%s.gz' % (context.dump_prefix, context.backup_timestamp)
 
     subdirectory = context.backup_timestamp[0:8]
 
