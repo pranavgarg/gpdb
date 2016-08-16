@@ -394,7 +394,9 @@ def check_successful_dump(report_file_contents):
 # raise exception for bad data
 def convert_report_filename_to_cdatabase_filename(context, report_file):
     timestamp = report_file[-18:-4]
-
+    ddboost_parent_dir = None
+    if context.ddboost:
+        ddboost_parent_dir = context.get_backup_dir(segment_dir='')
     report_contents = get_lines_from_file(report_file)
     old_metadata = context.generate_filename("metadata", use_old_format=True)
     old_format = False
@@ -402,7 +404,7 @@ def convert_report_filename_to_cdatabase_filename(context, report_file):
         if old_metadata in line:
             old_format = True
             break
-    return context.generate_filename("cdatabase", timestamp=timestamp, use_old_format=old_format)
+    return context.generate_filename("cdatabase", timestamp=timestamp, use_old_format=old_format, directory=ddboost_parent_dir)
 
 def get_lines_from_dd_file(filename, ddboost_storage_unit):
     cmdStr = 'gpddboost --readFile --from-file=%s' % filename
