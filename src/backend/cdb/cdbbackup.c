@@ -199,7 +199,7 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 
 #ifdef USE_DDBOOST
 	char       	*pszDDBoostFileName = NULL;
-	char	   	*pszDDBoostDirName = "db_dumps";		/* Default directory */	
+	char	   	*pszDDBoostDirName = "db_dumps";		/* Default directory */
 	char	   	*pszDDBoostStorageUnitName = NULL;
 	char 	   	*dd_boost_buffer_size = NULL;
 	char		*gpDDBoostCmdLine = NULL;
@@ -275,12 +275,12 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 	{
 		dd_boost_enabled = 1;
 	}
-	
+
 	if (dd_boost_enabled)
 	{
 		pszDDBoostFileName = formDDBoostFileName(pszBackupKey, false, is_compress);
-	
-		gpDDBoostPg = testProgramExists("gpddboost"); 
+
+		gpDDBoostPg = testProgramExists("gpddboost");
         	if (gpDDBoostPg == NULL)
         	{
                 	ereport(ERROR,
@@ -289,7 +289,7 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
                                                 "gpddboost", getenv("PGPATH"), getenv("PATH")),
                                  errhint("Restart the server and try again")));
         	}
-	
+
 	}
 #endif
 
@@ -622,7 +622,7 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 				}
 		}
 	}
-	else 
+	else
 	{
 		/* if user selected a compression program */
 		if (pszCompressionProgram[0] != '\0')
@@ -802,7 +802,7 @@ gp_backup_launch__(PG_FUNCTION_ARGS)
 #ifdef USE_DDBOOST
 		if(dd_boost_enabled)
 		{
-		
+
 			pszDDBoostFileName = formDDBoostFileName(pszBackupKey, true, is_compress);
 
 			memset(gpDDBoostCmdLine, 0, strlen(gpDDBoostCmdLine));
@@ -1019,8 +1019,8 @@ gp_restore_launch__(PG_FUNCTION_ARGS)
 	char       *dd_boost_buffer_size = NULL;
 	char       *mkdirStr = NULL;
 	int        err = 0;
-	
-#endif	
+
+#endif
 
 	postDataSchemaOnly = false;
 	verifyGpIdentityIsSet();
@@ -1068,7 +1068,7 @@ gp_restore_launch__(PG_FUNCTION_ARGS)
 	 * where the database resides
 	 */
 	pszBackupDirectory = relativeToAbsolute(pszBackupDirectory);
-    /* if statusDirectory is NULL, it defaults to SEGMENT DATA DIRECTORY */ 
+    /* if statusDirectory is NULL, it defaults to SEGMENT DATA DIRECTORY */
 	statusDirectory    = relativeToAbsolute(statusDirectory);
 
 	/* Validate existence of compression program and gp_restore_agent program */
@@ -1107,7 +1107,7 @@ gp_restore_launch__(PG_FUNCTION_ARGS)
         if (strstr(pszPassThroughParameters,"--dd_boost_enabled") != NULL)
         {
                 dd_boost_enabled = 1;
-                 
+
                 /* When restoring from DDBoost to a fresh cluster, we will not have the *
                 * db_dumps/<date> directory. This is required to store the status file *
                 * Fix is to create the specified backup directory for every ddboost    *
@@ -1120,7 +1120,7 @@ gp_restore_launch__(PG_FUNCTION_ARGS)
                      (errcode(ERRCODE_OUT_OF_MEMORY),
                      errmsg("out of memory")));
                 }
- 
+
                 memset(mkdirStr, 0, MAX_MKDIR_STRING_LEN);
                 sprintf(mkdirStr, "mkdir -p %s", pszBackupDirectory);
                 err = system(mkdirStr);
@@ -1141,7 +1141,7 @@ gp_restore_launch__(PG_FUNCTION_ARGS)
 		if (0 != stat(pszBackupFileName, &info))
 		{
 			if (netbackup_enabled)
-			{		
+			{
 				char *queriedNBUBackupFilePathName = queryNBUBackupFilePathName(netbackup_service_host, pszBackupFileName);
 
 				elog(LOG, "Verify backup file path on netbackup server: %s\n", pszBackupFileName);
@@ -1367,7 +1367,7 @@ gp_restore_launch__(PG_FUNCTION_ARGS)
 		/* Format gp_restore_agent with options, and Redirect both stdout and stderr into the status file */
 #ifdef USE_DDBOOST
 		if (dd_boost_enabled)
-		{	
+		{
 			sprintf(pszCmdLine, "%s --gp-k %s --dd_boost_buf_size %s --gp-d %s %s -p %d -U %s %s %s -d %s %s %s %s 2>&2",
 				bkPg, pszKeyParm, dd_boost_buffer_size, pszBackupDirectory, pszOnErrorStop, port, pszUserName, pszPassThroughParameters,
 				pszPassThroughTargetInfo, pszDBName, pszBackupFileName,
@@ -1392,7 +1392,7 @@ gp_restore_launch__(PG_FUNCTION_ARGS)
 				pszPassThroughTargetInfo, pszDBName, pszBackupFileName,
 				postDataSchemaOnly ? "2>>" : "2>", pszStatusFileName);
 		}
-			
+
 #else
 		if(netbackup_enabled)
 		{
@@ -1540,7 +1540,7 @@ gp_read_backup_file__(PG_FUNCTION_ARGS)
 	fclose(f);
 	f = NULL;
 	pszFullStatus[info.st_size] = '\0';
-	
+
 	return DirectFunctionCall1(textin, CStringGetDatum(positionToError(pszFullStatus)));
 }
 
@@ -1929,7 +1929,7 @@ formBackupFilePathName(char *pszBackupDirectory, char *pszBackupKey, bool is_com
 
 	strcat(pszBackupFileName, szFileNamePrefix);
 	strcat(pszBackupFileName, pszBackupKey);
-	
+
 	if (isPostData)
 	{
 		strcat(pszBackupFileName, "_post_data");
@@ -2288,9 +2288,9 @@ validateBackupDirectory(char *pszBackupDirectory)
 	}
 }
 
-/* 
+/*
  * positionToError - given a char buffer, position to the first error msg in it.
- * 
+ *
  * we are only interested in ERRORs. therefore, search for the first ERROR
  * and return the rest of the status file starting from that point. if no error
  * found, return a "no error found" string. We are only interested in occurrences
@@ -2306,7 +2306,7 @@ static char *positionToError(char *source)
 	while(true)
 	{
 		firstErr = strstr((const char*)sourceCopy, "ERROR");
-		
+
 		if (!firstErr)
 		{
 			break;
@@ -2325,7 +2325,7 @@ static char *positionToError(char *source)
 			}
 		}
 	}
-	
+
 	if (!firstErr)
 	{
 		/* no [ERROR] found */
@@ -2335,7 +2335,7 @@ static char *positionToError(char *source)
 	{
 		/* found [ERROR]. go back to beginning of the line */
 		char *p;
-		
+
 		for (p = firstErr ; p > source ; p--)
 		{
 			if (*p == '\n')
@@ -2344,10 +2344,10 @@ static char *positionToError(char *source)
 				break;
 			}
 		}
-		
+
 		firstErr = p;
 	}
-	
+
 	return firstErr;
 }
 
@@ -2362,7 +2362,7 @@ static char *formDDBoostFileName(char *pszBackupKey, bool isPostData, bool isCom
        char       *pszBackupFileName;
 
        verifyGpIdentityIsSet();
-       instid = GpIdentity.segindex == -1;
+       instid = GpIdentity.segindex;
        segid = GpIdentity.dbid;
 
 	memset(szFileNamePrefix, 0, sizeof(szFileNamePrefix));
@@ -2395,7 +2395,7 @@ static char *formDDBoostFileName(char *pszBackupKey, bool isPostData, bool isCom
 		strcat(pszBackupFileName, "_post_data");
 
 	if (isCompress)
-		strcat(pszBackupFileName, ".gz"); 
+		strcat(pszBackupFileName, ".gz");
 
        return pszBackupFileName;
 }
