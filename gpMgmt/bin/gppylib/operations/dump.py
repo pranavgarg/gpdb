@@ -1231,7 +1231,7 @@ class DumpGlobal(Operation):
 
         if self.context.ddboost:
             abspath = self.context.generate_filename("global", timestamp=self.timestamp)
-            relpath = abspath.split(self.context.backup_dir+"/")[1]
+            relpath = abspath[abspath.index(self.context.dump_dir):]
             logger.debug('Copying %s to DDBoost' % abspath)
             cmdStr = 'gpddboost --copyToDDBoost --from-file=%s --to-file=%s' % (abspath, relpath)
             if self.context.ddboost_storage_unit:
