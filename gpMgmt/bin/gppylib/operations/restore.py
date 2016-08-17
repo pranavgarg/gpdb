@@ -1142,7 +1142,7 @@ class GetDDboostDumpTablesOperation(GetDumpTablesOperation):
     def execute(self):
         # We want to make sure that directory is empty so that we can grab the ddboost directory value
         # with the timestamp
-        ddboost_parent_dir = self.context.get_backup_dir(directory='')
+        ddboost_parent_dir = self.context.get_backup_dir(segment_dir='')
         ddboost_cmdStr = 'gpddboost --readFile --from-file=%s' % self.context.generate_filename("dump", directory=ddboost_parent_dir)
 
         if self.context.ddboost_storage_unit:
