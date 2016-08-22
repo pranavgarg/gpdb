@@ -398,7 +398,7 @@ def convert_report_filename_to_cdatabase_filename(context, report_file):
     if context.ddboost:
         ddboost_parent_dir = context.get_backup_dir(segment_dir='')
     report_contents = get_lines_from_file(report_file)
-    old_metadata = context.generate_filename("metadata", use_old_format=True)
+    old_metadata = context.generate_filename("metadata", timestamp=timestamp, use_old_format=True)
     old_format = False
     for line in report_contents:
         if old_metadata in line:

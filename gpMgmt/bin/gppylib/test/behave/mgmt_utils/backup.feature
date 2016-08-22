@@ -3646,6 +3646,22 @@ Feature: Validate command line arguments
         Then gpdbrestore should return a return code of 2
         And gpdbrestore should print gpdbrestore error: No dump file on to stdout
 
+    Scenario: Full backup with old filename format
+        Given the test is initialized
+        And there is a "ao" table "public.ao_table" in "bkdb" with data
+        And there is a "heap" table "public.heap_table" in "bkdb" with data
+        When the user runs "gpcrondump -a -x bkdb"
+        Then gpcrondump should return a return code of 0
+        And the full backup timestamp from gpcrondump is stored
+        And the timestamp from gpcrondump is stored
+        And the backup files for the stored timestamp are in the old format
+        And database "bkdb" is dropped and recreated
+        When the user runs gpdbrestore with the stored timestamp
+        Then gpdbrestore should return a return code of 0
+        And verify that there is a "ao" table "public.ao_table" in "bkdb"
+        And verify that there is a "heap" table "public.heap_table" in "bkdb"
+        And verify that the tuple count of all appendonly tables are consistent in "bkdb"
+
     Scenario: Incremental backup with new filename format after full backup with old filename format
         Given the test is initialized
         And there is a "ao" table "public.ao_table" in "bkdb" with data
@@ -3653,7 +3669,7 @@ Feature: Validate command line arguments
         When the user runs "gpcrondump -a -x bkdb"
         Then gpcrondump should return a return code of 0
         And the full backup timestamp from gpcrondump is stored
-        # And the backup files for the stored timestamp are in the old format
+        And the backup files for the stored timestamp are in the old format
         And table "public.ao_table" is assumed to be in dirty state in "bkdb"
         And the user runs "gpcrondump -a --incremental -x bkdb"
         And gpcrondump should return a return code of 0
@@ -3677,7 +3693,7 @@ Feature: Validate command line arguments
         And the user runs "gpcrondump -a --incremental -x bkdb"
         And gpcrondump should return a return code of 0
         And the timestamp from gpcrondump is stored
-        # And the backup files for the stored timestamp are in the old format
+        And the backup files for the stored timestamp are in the old format
         And table "public.ao_table" is assumed to be in dirty state in "bkdb"
         And the user runs "gpcrondump -a --incremental -x bkdb"
         And gpcrondump should return a return code of 0

@@ -410,8 +410,8 @@ def impl(context, command, options):
     elif bnr_tool == 'gp_restore':
         command_str = "%s %s --gp-k %s --gp-d db_dumps/%s --gp-r db_dumps/%s" % (command, options, context.backup_timestamp, context.backup_timestamp[0:8], context.backup_timestamp[0:8])
     elif bnr_tool == 'gp_restore_agent':
-        command_str = "%s %s --gp-k %s --gp-d db_dumps/%s -p %s -U %s --target-host localhost --target-port %s db_dumps/%s/gp_dump_-1_1_%s_post_data.gz" % (command, options, ts, ts[0:8], port, user, port, ts[0:8], ts) 
-        
+        command_str = "%s %s --gp-k %s --gp-d db_dumps/%s -p %s -U %s --target-host localhost --target-port %s db_dumps/%s/gp_dump_-1_1_%s_post_data.gz" % (command, options, ts, ts[0:8], port, user, port, ts[0:8], ts)
+
     run_valgrind_command(context, command_str, "valgrind_suppression.txt")
 
 @then('the user runs valgrind with "{command}" and options "{options}" and suppressions file "{suppressions_file}" using netbackup')
@@ -3957,3 +3957,40 @@ def impl(context, seg):
         context.mirror_segdbname = mirror_segs[0].getSegmentHostName()
         context.mirror_datadir = mirror_segs[0].getSegmentDataDirectory()
         context.mirror_port = mirror_segs[0].getSegmentPort()
+
+@when('the backup files for the stored timestamp are in the old format')
+@then('the backup files for the stored timestamp are in the old format')
+def impl(context):
+    gparray = GpArray.initFromCatalog(dbconn.DbURL())
+    primary_segs = [seg for seg in gparray.getDbList() if seg.isSegmentPrimary() or seg.isSegmentMaster()]
+    timestamp = context.full_backup_timestamp
+    master_dump_dir = gparray.master.getSegmentDataDirectory()
+
+    for ps in primary_segs:
+        dump_dir = os.path.join(ps.getSegmentDataDirectory(), 'db_dumps', timestamp[0:8])
+        segdbId = ps.getSegmentDbId()
+        segcid = ps.getSegmentContentId()
+        segdbname = ps.getSegmentHostName()
+        new_format = "%s_%s" % (segcid, segdbId)
+        old_format = "%s_%s" % (1 if ps.isSegmentMaster() else 0, segdbId)
+
+        rename_files_to_older_format = """ ssh {segdbname} 'if [ -d "{dump_dir}" ]; then for i in `ls {dump_dir}/*{new_format}_{timestamp}* | xargs`; do
+                                           old_format=${{i/{new_format}/{old_format}}}
+                                           if [ ! -f $old_format ]; then mv $i $old_format; fi ;
+                                           done; fi;'
+                                       """.format(segdbname=segdbname,
+                                                  dump_dir=dump_dir,
+                                                  new_format=new_format,
+                                                  old_format=old_format,
+                                                  timestamp=timestamp)
+
+        run_command(context, rename_files_to_older_format)
+
+        if context.exception:
+            raise context.exception
+
+        #replace new format with old format on master directory report file
+        master_report_file = os.path.join(master_dump_dir, 'db_dumps', timestamp[0:8], 'gp_dump_%s.rpt' % timestamp)
+        change_report_file_content = "sed -i 's|%s|%s|' %s" % (new_format, old_format, master_report_file)
+
+        run_command(context, change_report_file_content)
