@@ -1777,7 +1777,7 @@ findAcceptableBackupFilePathName(char *pszBackupDirectory, char *pszBackupKey, i
 		pszRegexNew = (char *) palloc(regex_len + 2);
 		pszRegexOld = (char *) palloc(regex_len);
 
-		snprintf(pszRegexNew, regex_len, "^%sgp_dump_-?%d_[0-9]+_%s(.gz)?$", DUMP_PREFIX, instid, pszBackupKey);
+		snprintf(pszRegexNew, regex_len, "^%sgp_dump_%d_[0-9]+_%s(.gz)?$", DUMP_PREFIX, instid, pszBackupKey);
 		snprintf(pszRegexOld, regex_len, "^%sgp_dump_[0-9]+_%d_%s(.gz)?$", DUMP_PREFIX, segid, pszBackupKey);
 
 		masklenNew = strlen(pszRegexNew);
