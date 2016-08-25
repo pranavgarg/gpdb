@@ -527,7 +527,7 @@ class GpcrondumpTestCase(unittest.TestCase):
         with self.assertRaisesRegexp(Exception, '--ddboost is not supported with NetBackup'):
             GpCronDump(self.options, None)
 
-    def test_gpcrondump_options_h_H(self):
+    def test_gpcrondump_options_h_H(self, mock1):
         testargs = ["","-h", "-H"]
         with patch.object(sys, 'argv', testargs):
             with self.assertRaisesRegexp(Exception, '-H option cannot be selected with -h option. '):
