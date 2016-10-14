@@ -513,9 +513,9 @@ def impl(context):
 
     raise Exception('segments are not in sync after %d seconds' % (times * sleeptime))
 
-@when('alteast one segment is resynchronized')
-@then('alteast one segment is resynchronized')
-@given('alteast one segment is resynchronized')
+@when('at least one segment is resynchronized')
+@then('at least one segment is resynchronized')
+@given('at least one segment is resynchronized')
 def impl(context):
 
     times = 30

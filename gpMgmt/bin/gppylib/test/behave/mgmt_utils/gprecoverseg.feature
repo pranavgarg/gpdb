@@ -138,7 +138,7 @@ Feature: gprecoverseg tests
         And wait until the mirror is down
         When the user runs "gprecoverseg -F -a"
         Then gprecoverseg should return a return code of 0
-        Given alteast one segment is resynchronized
+        Given at least one segment is resynchronized
         When the user runs "gprecoverseg -r -a"
         Then gprecoverseg should print Some segments are not yet synchronized to stdout
         Then gprecoverseg should return a return code of 2
