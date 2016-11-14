@@ -49,15 +49,6 @@ resources:
     secret_access_key: {{bucket-secret-access-key}}
     versioned_file: {{sync_tools_gpdb_centos_versioned_file}}
 
-- name: gpdb_src_tinc
-  type: s3
-  source:
-    access_key_id: {{bucket-access-key-id}}
-    bucket: {{bucket-name}}
-    region_name: {{aws-region}}
-    secret_access_key: {{bucket-secret-access-key}}
-    versioned_file: gpdb_src_tinc/greenplum-db-4.3.99.0-src.tar.gz
-
 - name: installer_rhel6_gpdb_rc
   type: s3
   source:
@@ -102,6 +93,16 @@ resources:
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     versioned_file: deliverables/QAUtils-rhel6-x86_64.tar.gz
+
+- name: gpdb_src_tinc_tarball
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    versioned_file: deliverables/greenplum-db-4.3.99.0-src.tar.gz
+
 
 ## ======================================================================
 ## jobs
@@ -420,13 +421,11 @@ jobs:
     tags: ["worker-three"]
     params:
       QAUTILS_TARBALL: rc_bin_gpdb/QAUtils-rhel6-x86_64.tar.gz
-  - task: gpdb_src_packaging
-    file: gpdb_src/ci/concourse/gpdb_src_packaging.yml
+
+  - task: gpdb_src_tinc_packaging
+    file: gpdb_src/ci/concourse/gpdb_src_tinc_packaging.yml
     params:
-      GPDB_SRC_TAR_GZ: gpdb_src_archive/greenplum-db-4.3.9.1-src.tar.gz
-  - put: gpdb_src_archive
-    params:
-      file: gpdb_src_archive/greenplum-db-4.3.9.1-src.tar.gz
+      GPDB_SRC_TAR_GZ: packaged_gpdb/greenplum-db-4.3.99.0-src.tar.gz
 
   - aggregate:
     - task: gpdb_rc_packaging_centos
@@ -473,3 +472,8 @@ jobs:
       tags: ["worker-three"]
       params:
         file: rc_bin_gpdb/QAUtils-rhel6-x86_64.tar.gz
+    - put: gpdb_src_tinc_tarball
+      tags: ["worker-three"]
+      params:
+        file: packaged_gpdb/greenplum-db-4.3.99.0-src.tar.gz
+
