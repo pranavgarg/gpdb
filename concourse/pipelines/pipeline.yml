@@ -424,8 +424,10 @@ jobs:
 
   - task: gpdb_src_tinc_packaging
     file: gpdb_src/concourse/gpdb_src_tinc_packaging.yml
+    image: centos67-gpdb-gcc6-llvm-image
+    tags: ["worker-three"]
     params:
-      GPDB_SRC_TAR_GZ: packaged_gpdb/greenplum-db-4.3.99.0-src.tar.gz
+      GPDB_SRC_TAR_GZ: rc_bin_gpdb/greenplum-db-4.3.99.0-src.tar.gz
 
   - aggregate:
     - task: gpdb_rc_packaging_centos
@@ -475,5 +477,5 @@ jobs:
     - put: gpdb_src_tinc_tarball
       tags: ["worker-three"]
       params:
-        file: packaged_gpdb/greenplum-db-4.3.99.0-src.tar.gz
+        file: rc_bin_gpdb/greenplum-db-4.3.99.0-src.tar.gz
 
