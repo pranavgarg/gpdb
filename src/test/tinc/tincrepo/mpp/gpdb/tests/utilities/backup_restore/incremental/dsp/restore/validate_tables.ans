@@ -1,0 +1,130 @@
+-- validate the sqls's state after restore
+\c dsp_db
+You are now connected to database "dsp_db" as user "sivand".
+show gp_default_storage_options;
+                            gp_default_storage_options                            
+----------------------------------------------------------------------------------
+ appendonly=false,blocksize=32768,compresstype=none,checksum=true,orientation=row
+(1 row)
+
+\d+ dsp_db_t1
+                              Append-Only Columnar Table "public.dsp_db_t1"
+ Column |  Type   | Modifiers | Storage | Compression Type | Compression Level | Block Size | Description 
+--------+---------+-----------+---------+------------------+-------------------+------------+-------------
+ i      | integer |           | plain   | rle_type         | 4                 | 65536      | 
+ j      | integer |           | plain   | rle_type         | 4                 | 65536      | 
+Checksum: t
+Has OIDs: no
+Options: appendonly=true, blocksize=65536, compresstype=rle_type, compresslevel=4, orientation=column
+Distributed by: (i)
+
+select relstorage, reloptions,compresstype,columnstore,compresslevel,columnstore,checksum from pg_class c , pg_appendonly a where c.relfilenode=a.relid and c.relname='dsp_db_t1';
+ relstorage |                                         reloptions                                         | compresstype | columnstore | compresslevel | columnstore | checksum 
+------------+--------------------------------------------------------------------------------------------+--------------+-------------+---------------+-------------+----------
+ c          | {appendonly=true,blocksize=65536,compresstype=rle_type,compresslevel=4,orientation=column} | rle_type     | t           |             4 | t           | t
+(1 row)
+
+\d+ dsp_db_t2
+               Table "public.dsp_db_t2"
+ Column |  Type   | Modifiers | Storage | Description 
+--------+---------+-----------+---------+-------------
+ i      | integer |           | plain   | 
+ j      | integer |           | plain   | 
+Has OIDs: no
+Options: appendonly=false
+Distributed by: (i)
+
+select relname, relstorage, reloptions from pg_class where relname='dsp_db_t2';
+  relname  | relstorage |     reloptions     
+-----------+------------+--------------------
+ dsp_db_t2 | h          | {appendonly=false}
+(1 row)
+
+\d+ dsp_db_t3
+         Append-Only Table "public.dsp_db_t3"
+ Column |  Type   | Modifiers | Storage | Description 
+--------+---------+-----------+---------+-------------
+ i      | integer |           | plain   | 
+ j      | integer |           | plain   | 
+Compression Type: zlib
+Compression Level: 4
+Block Size: 65536
+Checksum: t
+Has OIDs: no
+Options: appendonly=true, orientation=row, compresstype=zlib, blocksize=65536, compresslevel=4
+Distributed by: (i)
+
+select relstorage, reloptions,compresstype,columnstore,compresslevel,columnstore,checksum from pg_class c , pg_appendonly a where c.relfilenode=a.relid and c.relname='dsp_db_t3';
+ relstorage |                                     reloptions                                      | compresstype | columnstore | compresslevel | columnstore | checksum 
+------------+-------------------------------------------------------------------------------------+--------------+-------------+---------------+-------------+----------
+ a          | {appendonly=true,orientation=row,compresstype=zlib,blocksize=65536,compresslevel=4} | zlib         | f           |             4 | f           | t
+(1 row)
+
+\d+ dsp_db_t4
+         Append-Only Table "public.dsp_db_t4"
+ Column |  Type   | Modifiers | Storage | Description 
+--------+---------+-----------+---------+-------------
+ i      | integer |           | plain   | 
+ j      | integer |           | plain   | 
+Compression Type: quicklz
+Compression Level: 1
+Block Size: 32768
+Checksum: f
+Has OIDs: no
+Options: appendonly=true, compresstype=quicklz, checksum=false
+Distributed by: (i)
+
+select relstorage, reloptions,compresstype,columnstore,compresslevel,columnstore,checksum from pg_class c , pg_appendonly a where c.relfilenode=a.relid and c.relname='dsp_db_t4';
+ relstorage |                      reloptions                       | compresstype | columnstore | compresslevel | columnstore | checksum 
+------------+-------------------------------------------------------+--------------+-------------+---------------+-------------+----------
+ a          | {appendonly=true,compresstype=quicklz,checksum=false} | quicklz      | f           |             1 | f           | f
+(1 row)
+
+\d+ dsp_db_t5
+               Table "public.dsp_db_t5"
+ Column |  Type   | Modifiers | Storage | Description 
+--------+---------+-----------+---------+-------------
+ i      | integer |           | plain   | 
+ j      | integer |           | plain   | 
+Has OIDs: no
+Options: appendonly=false
+Distributed by: (i)
+
+select relname, relstorage, reloptions from pg_class where relname='dsp_db_t5';
+  relname  | relstorage |     reloptions     
+-----------+------------+--------------------
+ dsp_db_t5 | h          | {appendonly=false}
+(1 row)
+
+\d+ dsp_db_t6
+                              Append-Only Columnar Table "public.dsp_db_t6"
+ Column |  Type   | Modifiers | Storage | Compression Type | Compression Level | Block Size | Description 
+--------+---------+-----------+---------+------------------+-------------------+------------+-------------
+ i      | integer |           | plain   | rle_type         | 1                 | 32768      | 
+ j      | integer |           | plain   | rle_type         | 1                 | 32768      | 
+Checksum: t
+Has OIDs: no
+Options: appendonly=true, orientation=column, compresstype=rle_type, checksum=true
+Distributed by: (i)
+
+select relstorage, reloptions,compresstype,columnstore,compresslevel,columnstore,checksum from pg_class c , pg_appendonly a where c.relfilenode=a.relid and c.relname='dsp_db_t6';
+ relstorage |                                reloptions                                | compresstype | columnstore | compresslevel | columnstore | checksum 
+------------+--------------------------------------------------------------------------+--------------+-------------+---------------+-------------+----------
+ c          | {appendonly=true,orientation=column,compresstype=rle_type,checksum=true} | rle_type     | t           |             1 | t           | t
+(1 row)
+
+\d+ dsp_hp_t1
+               Table "public.dsp_hp_t1"
+ Column |  Type   | Modifiers | Storage | Description 
+--------+---------+-----------+---------+-------------
+ i      | integer |           | plain   | 
+ j      | integer |           | plain   | 
+Has OIDs: no
+Distributed by: (i)
+
+select relname, relstorage, reloptions from pg_class where relname='dsp_hp_t1';
+  relname  | relstorage | reloptions 
+-----------+------------+------------
+ dsp_hp_t1 | h          | 
+(1 row)
+
