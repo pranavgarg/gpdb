@@ -21,7 +21,7 @@ import unittest2 as unittest
 import tinctest
 from mpp.lib.PSQL import PSQL
 from tinctest.models.scenario import ScenarioTestCase
-from mpp.gpdb.tests.utilities.backup_restore.incremental import BackupTestCase, is_earlier_than
+from mpp.gpdb.tests.utilities.backup_restore.incremental import BackupTestCase
 from tinctest.lib import local_path
 from mpp.lib.gpdb_util import GPDBUtil
 
@@ -101,7 +101,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         self.compare_table_data('bkdb2')
         self.compare_ao_tuple_count('bkdb2')
 
-    @unittest.skipIf((os.uname()[0] == 'SunOS'), 'Skipped on Solaris')
     def test_03_incremental_option2(self):
 
         tinctest.logger.info("Test3: incremental backup  with options -c, --resyncable, -l,--no-owner, --no-privileges, --inserts etc ...")
@@ -173,7 +172,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         self.compare_table_data('bkdb5')
         self.compare_ao_tuple_count('bkdb5')
 
-    @unittest.skipIf((os.uname()[0] == 'SunOS'), 'Skipped on Solaris')
     def test_06_incremental_with_full_backup_prev_day(self):
         tinctest.logger.info("Test6: Incremental backup against a full/incr that was created on previous day")
         self.cleanup_backup_files()
@@ -274,7 +272,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         self.remove_full_dumps(location = '/tmp')
         self.run_restore('bkdb13', option = ' -R ', location = '/tmp', expected_rc = 2)
 
-    @unittest.skipIf((os.uname()[0] == 'SunOS'), 'Skipped on Solaris')
     def test_12_incremental_with_restore_option_b(self):
         tinctest.logger.info("Test12: Incremental and Full restore with -b option")
         self.cleanup_backup_files()
@@ -293,7 +290,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
 
         self.compare_ao_tuple_count('bkdb14')
 
-    @unittest.skipIf((os.uname()[0] == 'SunOS'), 'Skipped on Solaris')
     def test_13_incremental_with_restore_option_b_and_u(self):
         tinctest.logger.info("Test13: Incremental and Full restore with -b option and a backup_dir")
         self.run_workload("backup_dir", 'bkdb15')
@@ -435,7 +431,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         self.run_restore('bkdb9', option = '-T public.ao_table1 -T public.heap_table3 -T public.mixed_part01 -a -e -b ')
         self.validate_restore("restore_incr_T_with_e", 'bkdb9')
 
-    @unittest.skipIf((os.uname()[0] == 'SunOS'), 'Skipped on Solaris')
     def test_21_incremental_restore_select_tablefile_with_option_b(self):
         tinctest.logger.info("Test21: Test to restore with selected tables in a file  with option b ")
         self.cleanup_backup_files()
@@ -451,7 +446,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         self.run_restore('bkdb9', option = '--table-file=%s -a -e -b ' % table_file)
         self.validate_restore("restore_incr_T_with_e", 'bkdb9')
 
-    @unittest.skipIf((os.uname()[0] == 'SunOS'), 'Skipped on Solaris')
     def test_22_incremental_select_restore_with_b_and_u(self):
         tinctest.logger.info("Test22: Test to select restore with option b and u ")
         self.cleanup_backup_files(location = '/tmp') # Cleaning the previous backups under /tmp
@@ -466,7 +460,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         self.run_restore('bkdb9', option = '-T public.ao_table1 -T public.heap_table3 -T public.mixed_part01 -u /tmp  -a -e -b ', location = '/tmp')
         self.validate_restore("restore_incr_T_with_e", 'bkdb9')
 
-    @unittest.skipIf((os.uname()[0] == 'SunOS'), 'Skipped on Solaris')
     def test_23_incremental_restore_select_tablefile_with_b_and_u(self):
         tinctest.logger.info("Test23: Test to restore with selected tables in a file with option u and b ")
 
@@ -1097,7 +1090,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         if not self.isFileEqual(afterDumpDirCreated, afterDumpDirRemovedAns):
             raise Exception('GPCRONDUMP -o option error')
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.4.0') and version != '4.2.8.5', 'Skipped on version before 4.3.4.0 and not equal to 4.2.8.5')
     def test_50_empty_schema_restore(self):
         # create a new database
         new_db = 'psql -d template1 -c "create database testdb;"'
@@ -1134,7 +1126,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         drop_db = 'psql -d template1 -c "drop database testdb;"'
         self.run_command(drop_db)
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.6.2'), 'Skipped on version before 4.3.6.2')
     def test_master_not_hang_on_segment_crash(self):
         """
         MPP-25943: gpcrondump, backup fails on segment causes master hang and hold lock on pg_class.
@@ -1157,7 +1148,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         self.test_case_scenario.append(list2)
 
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.7'), 'Skipped on version before 4.3.7')
     def test_gpcrondump_error_report(self):
         """
         gpcrondump sholuld report the errors from segment failures/errors
@@ -1188,7 +1178,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         PSQL.run_sql_command(drop_db, dbname='template1')
 
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.7'), 'Skipped on version before 4.3.7')
     def test_gpdbrestore_error_report(self):
         """
         gpdbrestore should report the errors from segment failures/errors
@@ -1213,7 +1202,6 @@ class test_backup_restore(BackupTestCase, ScenarioTestCase):
         self.assertTrue(self.isStringInFile(report_file, 'ERROR:  relation "test" already exists'))
         PSQL.run_sql_command(drop_db, dbname='template1')
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.7'), 'Skipped on version before 4.3.7')
     def test_gpdbrestore_full_with_filter_error_report(self):
         """
         gpdbrestore -T should report errors
