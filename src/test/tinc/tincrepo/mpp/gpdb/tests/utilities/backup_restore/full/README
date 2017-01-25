@@ -1,0 +1,24 @@
+***** TestCase Structure *****
+1. Run workload to create the tables (backup_dir[x])
+2. Optional: Run workload to alter/insert the tables created in step1 [dirty_dir[x] ] 
+3. Full Backup
+4. Restore
+5. Validate restore [restore_dir]
+6. Validate table data
+7. Verify ao, co table tuple count
+
+*** How to add a new test : All three steps should be added***
+1. Add the new table in the existing backup_dir or create new directory containing required tables
+2. All a validation sql in restore_dir to validate the metadata of the table after restore
+3. SQL to verify ao, co tuple count
+
+*** Adding sql files in a new version ***
+
+Since the sql runs are not using any of the tincrepo models like SQLTestCase, it doesn't support the metadata to pass in the versions.
+We have to explicitly differentiate them in the 'run_sqlfiles' function.
+For eg: The tests that can only run on 4.3  need to have a name with '4_3' in it and add a line in the funciton like
+if '4.2' in version and '4_3' in file:
+    continue
+
+Or else:
+Create new test_methods with appropriate @gpdb_version
