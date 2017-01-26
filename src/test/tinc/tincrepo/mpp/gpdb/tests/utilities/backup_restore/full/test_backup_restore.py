@@ -24,6 +24,7 @@ import unittest2 as unittest
 import tinctest
 from mpp.lib.PSQL import PSQL
 from mpp.gpdb.tests.utilities.backup_restore.full import BackupTestCase, is_earlier_than
+from mpp.gpdb.tests.utilities.backup_restore import read_config_yaml
 from tinctest.lib import local_path
 from mpp.lib.gpdb_util import GPDBUtil
 
@@ -48,7 +49,7 @@ class test_backup_restore(BackupTestCase):
         ddboost_path_yml = os.path.join(os.getenv('MASTER_DATA_DIRECTORY'),
                                         'ddboost_config.yml')
         tinctest.logger.info("reading ddboost config yml")
-        ddboost_config = self._read_config_yaml(ddboost_path_yml)
+        ddboost_config = read_config_yaml(ddboost_path_yml)
         self.HOST = ddboost_config['DDBOOST_HOST']
         self.USER = ddboost_config['DDBOOST_USER']
         self.PASSWORD = ddboost_config['DDBOOST_PASSWORD']

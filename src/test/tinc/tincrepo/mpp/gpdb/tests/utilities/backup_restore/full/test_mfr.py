@@ -19,13 +19,13 @@ limitations under the License.
 
 import os
 import pexpect
-from datetime import date 
+from datetime import date
 import unittest2 as unittest
 import tinctest
-from mpp.lib.PSQL import PSQL 
+from mpp.lib.PSQL import PSQL
 from mpp.gpdb.tests.utilities.backup_restore.full import BackupTestCase, is_earlier_than
 from tinctest.lib import local_path
-    
+
 import sys, string, time
 from mpp.lib.gpdb_util import GPDBUtil
 gpdb_util = GPDBUtil()
@@ -38,7 +38,7 @@ port = os.environ.get('PGPORT')
 
 #Fix the search path for modules so it finds the utility lib dir
 MYD = os.path.abspath(os.path.dirname(__file__))
-mkpath = lambda *x: os.path.join(MYD, *x) 
+mkpath = lambda *x: os.path.join(MYD, *x)
 UPD = os.path.abspath(mkpath('..'))
 
 if UPD not in sys.path:
@@ -58,15 +58,15 @@ sys.path.append( UPD + os.sep + "lib" )
 ALTERNATIVE_STORAGE_UNIT = 'TEMP'
 
 class test_mfr(BackupTestCase):
-    """ 
-    
+    """
+
     @description test cases for incremental backup with ddboost
     @created 2014-08-10 10:10:10
     @modified 2014-08-11 10:10:15
     @tags backup restore gpcrondump gpdbrestore mfr
     @product_version gpdb: [4.3.2.x- main]
     @gucs gp_create_table_random_default_distribution=off
-    """  
+    """
 
     DB3DumpKey = None
     DB2DumpKey = None
@@ -85,7 +85,7 @@ class test_mfr(BackupTestCase):
             msg = "Failed to remove previous DD configuration\n" % backup_set
             for i in out:
                 msg += i
-            
+
             raise Exception(msg)
 
         cfg_cmd_1 = "gpcrondump --ddboost-host %s --ddboost-user %s --ddboost-backupdir %s" %\
@@ -111,7 +111,7 @@ class test_mfr(BackupTestCase):
         global DB1DumpKey
         DBNAME = BackupTestCase.TSTINFO['DB1']
         (DB1DumpKey, errmsg) = self.do_bkup_test('test02_gpcrondump_with_replicate',DBNAME,'--replicate')
-        
+
         if DB1DumpKey == None:
             raise Exception(errmsg)
 
@@ -120,7 +120,7 @@ class test_mfr(BackupTestCase):
         global DB2DumpKey
         DBNAME = BackupTestCase.TSTINFO['DB2']
         (DB2DumpKey, errmsg) = self.do_bkup_test('test03_gpcrondump_without_replicate',DBNAME,None)
-        
+
         if DB2DumpKey == None:
             raise Exception(errmsg)
 
@@ -129,7 +129,7 @@ class test_mfr(BackupTestCase):
         global DB3DumpKey
         DBNAME = BackupTestCase.TSTINFO['DB2']
         (DB3DumpKey, errmsg) = self.do_incr_bkup_test('test03_gpcrondump_without_replicate',DBNAME,None)
-        
+
         if DB3DumpKey == None:
             raise Exception(errmsg)
 
@@ -140,7 +140,7 @@ class test_mfr(BackupTestCase):
         #Start the replicate thread
         repl_thrd = CancelReplicateThreader("test14_cancel_while_replicating_backup_set",DB2DumpKey)
         repl_thrd.start()
-        
+
         #Check to see if the backup set dir exists when it does kill the replication
         time.sleep(43)
         pid_num = repl_thrd.stop()
@@ -160,7 +160,7 @@ class test_mfr(BackupTestCase):
                     print "%s still exists" % proc_path
                     time.sleep(10)
             except:
-                wait = False 
+                wait = False
 
         (ok,errmsg) = self.mfr_list_sets('test04_cancel_while_replicating_backup_set_list',DB2DumpKey,None,remote=True)
 
@@ -181,9 +181,9 @@ class test_mfr(BackupTestCase):
             msg = "Replication of backup set %s failed\n" % backup_set
             for i in out:
                 msg += i
-            
+
             raise Exception(msg)
-        
+
     def test_06_replicate_backup(self):
         global DB3DumpKey
         backup_set = self.convert_dmpkey_to_date(DB3DumpKey)
@@ -197,7 +197,7 @@ class test_mfr(BackupTestCase):
             msg = "Replication of backup set %s failed\n" % backup_set
             for i in out:
                 msg += i
-           
+
             raise Exception(msg)
 
     def test_07_list_backup_sets_local_ddr(self):
@@ -282,7 +282,7 @@ class test_mfr(BackupTestCase):
         #Remove the backup set for database on primary DD
         global DB3DumpKey
         backup_set = self.convert_dmpkey_to_date(DB3DumpKey)
- 
+
         del_cmd = "gpmfr.py --delete=\"%s\" --master-port=%s" % (backup_set, port)
 
         local = pexpect.spawn(del_cmd)
@@ -305,14 +305,14 @@ class test_mfr(BackupTestCase):
             msg = "Recovery of backup set %s failed\n" % backup_set
             for i in out:
                 msg += i
-            
+
             raise Exception(msg)
 
     def test_15_recover_backup_set_from_secondary_ddr(self):
         #Recover the backup set for database from remote DD
         global DB3DumpKey
         backup_set = self.convert_dmpkey_to_date(DB3DumpKey)
- 
+
         cmdOutFile = 'test12__recover_backup_set_from_secondary_ddr_'+time.strftime("_%d%m%Y-%H%M%S", time.gmtime())+'.out'
         cmdOut = mkpath(cmdOutFile)
         cmdRepl = "gpmfr.py --recover=\"%s\" --max-streams=80 --master-port=%s" % (backup_set, port)
@@ -322,7 +322,7 @@ class test_mfr(BackupTestCase):
             msg = "Recovery of backup set %s failed\n" % backup_set
             for i in out:
                 msg += i
-           
+
             raise Exception(msg)
 
     def test_16_gpdbrestore_using_ddboost(self):
@@ -342,9 +342,9 @@ class test_mfr(BackupTestCase):
     def test_17_gpdbrestore_using_ddboost(self):
         #Restore full backup of database backup set just recovered from remote DD
         global DB3DumpKey
- 
+
         DBNAME = BackupTestCase.TSTINFO['DB2']
- 
+
         if DB2DumpKey == None:
             self.skipTest(msg="Skipping test due to test03 failure")
         else:
@@ -379,9 +379,9 @@ class test_mfr(BackupTestCase):
             msg = "Replication of backup set %s failed\n" % backup_set
             for i in out:
                 msg += i
-            
+
             raise Exception(msg)
-        
+
     def test_20_list_latest_local_backup_set(self):
         #List the files in the backup set using LATEST parameter on local DD
         global DB1DumpKey

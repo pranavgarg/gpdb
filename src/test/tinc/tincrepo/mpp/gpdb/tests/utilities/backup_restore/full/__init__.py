@@ -36,6 +36,7 @@ from tinctest.case import TINCTestCase
 from tinctest.lib import local_path, Gpdiff
 from tinctest.runner import TINCTextTestResult
 from mpp.lib.PSQL import PSQL
+from mpp.gpdb.tests.utilities.backup_restore import read_config_yaml
 
 try:
     from gppylib.db import dbconn
@@ -100,7 +101,7 @@ class BackupTestCase(TINCTestCase):
         tinctest.logger.info("==========================================================================")
         tinctest.logger.info("STARTING MFR Testing SUITE")
         tinctest.logger.info("==========================================================================")
-        BackupTestCase.TSTINFO = self._read_config_yaml(file)
+        BackupTestCase.TSTINFO = read_config_yaml(file)
 
         #If a DDBOOST Directory wasn't specify create one
         if 'DDBOOST_DIR' not in BackupTestCase.TSTINFO:
@@ -658,29 +659,6 @@ class BackupTestCase(TINCTestCase):
                     tinctest.logger.info("Successfully loaded database %s with data" % DBNAME)
 
         ### End function check_build_dbs()
-
-    def _read_config_yaml(self, file):
-        """ Reads in a yaml file. """
-
-        try:
-            cfgfile = open(file, 'r')
-        except IOError,e:
-            raise Exception("Unable to open file %s: %s" % (file,e))
-
-        try:
-            cfgyamldata = yaml.load(cfgfile.read())
-        except yaml.YAMLError, exc:
-            raise Exception("Error reading file %s: %s" % (file, exc))
-        finally:
-            cfgfile.close()
-
-        if len(cfgyamldata) == 0:
-            raise Exception("The load of the config file %s failed.\
-             No configuration information to continue testing operation." % file)
-        else:
-            return cfgyamldata
-
-    ### End function _read_config_yaml
 
     def run_command(self, command):
         cmd = Command(name='run %s' % command, cmdStr='%s' % (command))
