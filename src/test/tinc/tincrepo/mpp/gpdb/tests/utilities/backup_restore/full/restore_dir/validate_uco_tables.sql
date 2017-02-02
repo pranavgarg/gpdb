@@ -13,7 +13,7 @@ select * from uco_table5 order by bigint_col;
 
 select * from uco_table6 order by col_numeric, col_text;
 
-select * from ucoschema1.uco_table7 order by col_numeric;
+select * from ucoschema1.uco_table7 order by col_numeric, col_text;
 
 select * from uco_table8 order by bigint_col;
 

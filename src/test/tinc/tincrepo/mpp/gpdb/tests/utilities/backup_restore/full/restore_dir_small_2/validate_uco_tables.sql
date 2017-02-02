@@ -5,7 +5,7 @@ select * from ucoschema1_1.uco_table3_1 order by stud_id;
 
 select * from uco_table6_1 order by col_numeric, col_text;
 
-select * from ucoschema1_1.uco_table7_1 order by col_numeric;
+select * from ucoschema1_1.uco_table7_1 order by col_numeric, col_text;
 
 select * from uco_compr01_1 order by col_numeric;
 
