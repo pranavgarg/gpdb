@@ -31,12 +31,12 @@ select * from uco_table6_1 order by col_numeric, col_text;
  10_texttexttext |          10
 (13 rows)
 
-select * from ucoschema1_1.uco_table7_1 order by col_numeric;
+select * from ucoschema1_1.uco_table7_1 order by col_numeric, col_text;
     col_text     | col_numeric 
 -----------------+-------------
  new_0_zero      |           0
- 1_texttexttext  |           1
  1_one           |           1
+ 1_texttexttext  |           1
  2_texttexttext  |           2
  2_two           |           2
  3_texttexttext  |           3

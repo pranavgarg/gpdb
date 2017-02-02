@@ -1,7 +1,7 @@
 -- @gucs gp_create_table_random_default_distribution=off
 select * from uco_table1 order by bigint_col;
 
-select * from uco_table2 order by col_numeric;
+select * from uco_table2 order by col_numeric, col_text;
 
 select * from ucoschema1.uco_table3 order by stud_id;
 
