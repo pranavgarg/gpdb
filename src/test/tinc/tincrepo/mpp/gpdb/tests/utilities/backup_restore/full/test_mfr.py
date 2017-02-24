@@ -133,41 +133,6 @@ class test_mfr(BackupTestCase):
         if DB3DumpKey == None:
             raise Exception(errmsg)
 
-    """
-    def test_cancel_while_replicating_backup_set_04(self):
-        global DB2DumpKey
-
-        #Start the replicate thread
-        repl_thrd = CancelReplicateThreader("test14_cancel_while_replicating_backup_set",DB2DumpKey)
-        repl_thrd.start()
-
-        #Check to see if the backup set dir exists when it does kill the replication
-        time.sleep(43)
-        pid_num = repl_thrd.stop()
-
-        while repl_thrd.isAlive():
-            time.sleep(10)
-
-        repl_thrd.join(180)
-        repl_thrd.join(180)
-        proc_path = "/proc/%s/root" % pid_num
-        wait = True
-        while wait:
-            try:
-                if not os.path.exists(os.readlink(proc_path)):
-                    wait = False
-                else:
-                    print "%s still exists" % proc_path
-                    time.sleep(10)
-            except:
-                wait = False
-
-        (ok,errmsg) = self.mfr_list_sets('test04_cancel_while_replicating_backup_set_list',DB2DumpKey,None,remote=True)
-
-        if ok:
-            msg = "The replication directory was not cleaned up after gpmfr was canceled."
-            raise Exception(msg)"""
-
     def test_05_replicate_backup(self):
         global DB2DumpKey
         backup_set = self.convert_dmpkey_to_date(DB2DumpKey)
