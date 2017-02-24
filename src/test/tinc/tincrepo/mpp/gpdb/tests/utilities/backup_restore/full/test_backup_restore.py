@@ -86,7 +86,6 @@ class test_backup_restore(BackupTestCase):
     def test_01_ddboost_config_without_storage_unit(self):
         self.ddboost_config_setup(self.BACKUPDIR)
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.9'), 'Skipped on version before 4.3.9')
     def test_01_ddboost_config_with_storage_unit(self):
         self.ddboost_config_setup(self.BACKUPDIR, storage_unit="GPDB2")
 
@@ -428,7 +427,6 @@ class test_backup_restore(BackupTestCase):
         self.compare_table_data('bkdbbb')
         self.drop_database('bkdbbb')
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.4'), 'Skipped on version before 4.3.4')
     def test_ddboost_21_full_exclude_schema(self):
         '''exclude multiple tables '''
         tinctest.logger.info("Test-ddboost-20: Test for exclude multiple tables with --ddboost")
@@ -469,7 +467,6 @@ class test_backup_restore(BackupTestCase):
         self.compare_table_data('bkdbbb')
         self.drop_database('bkdbbb')
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.4'), 'Skipped on version before 4.3.4')
     def test_ddboost_23_full_exclude_schema_file(self):
         '''exclude multiple tables '''
         tinctest.logger.info("Test-ddboost-20: Test for exclude multiple tables with --ddboost")
@@ -499,7 +496,6 @@ class test_backup_restore(BackupTestCase):
         if rc == 0:
             raise Exception('Error: %s'%out)
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.4'), 'Skipped on version before 4.3.4')
     def test_ddboost_26_full_restore_with_option_T_truncate(self):
         tinctest.logger.info("Test-ddboost-5: Test for gpcrondump; Restore with option -T")
 
@@ -512,28 +508,6 @@ class test_backup_restore(BackupTestCase):
         self.run_restore('bkdb3', option = '-T public.ao_table1 -T public.heap_table3 -T public.mixed_part01 -a  --truncate --ddboost')
         self.validate_restore("restore_T_with_e", 'bkdb3')
 
-    @unittest.skipIf(version >= '4.3' or is_earlier_than(version, '4.2.8.4'), 'Skipped on version after 4.3 or before 4.2.8.4')
-    def test_ddboost_28_check_sequence_value(self):
-        tinctest.logger.info("Test-ddboost-28: Test gpdbrestore with --ddboost option to restore sequence values")
-        self.drop_database('bkdbseq')
-        self.run_workload("check_seq_val", 'bkdbseq')
-        self.run_full_backup(dbname = 'bkdbseq', option = '--ddboost')
-
-        self.cleanup()
-
-        #Increase sequence value twice
-        cmdSql = 'psql -d bkdbseq -c "SELECT nextval(\'serial\')"'
-        self.run_command(cmdSql) #1
-        self.run_command(cmdSql) #2
-
-        #Drop tables before restoring it from dump file
-        cmdTrunc = 'psql -d bkdbseq -c "drop table public.company"'
-        self.run_command(cmdTrunc)
-
-        self.run_restore('bkdbseq', option = '-T public.company -a --ddboost')
-        self.validate_restore("check_seq_val_ans", 'bkdbseq')
-        self.drop_database('bkdbseq')
-
     def test_ddboost_29_remove_backup_dir(self):
         cmd_del_dir = "gpddboost --del-dir=%s" % self.BACKUPDIR
         (err, out) = self.run_command(cmd_del_dir)
@@ -541,7 +515,6 @@ class test_backup_restore(BackupTestCase):
             msg = "Failed to delete backup directory\n" % self.BACKUPDIR
             raise Exception('Error: %s\n%s'% (msg,out))
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.5.4'), 'Skipped on version before 4.3.5.4')
     def test_ddboost_30_restore_should_not_restore_sequence(self):
         """
         MPP-25744, restoring single table should not restore any sequence with ddboost
@@ -574,7 +547,6 @@ class test_backup_restore(BackupTestCase):
         # sequence number should not be restored back to 1
         self.assertEquals(last_val, 2)
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.6.2'), 'Skipped on version before 4.3.6.2')
     def test_ddboost_31_restore_without_compression(self):
         """
         MPP-25620: gpdbrestore is failing for ddboost if compression program is
@@ -601,7 +573,6 @@ class test_backup_restore(BackupTestCase):
             lines = fd.readlines()
             self.assertNotIn('psql finished abnormally with return code 1', lines)
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.9'), 'Skipped on version before 4.3.9')
     def test_ddboost_32_dynamic_storage_unit(self):
         """
         Note: storage unit TEMP is assumed to already exist on DD server.
@@ -637,7 +608,6 @@ class test_backup_restore(BackupTestCase):
         # cleanup the dumped files on DD server
         self.delete_ddboost_files(os.path.join(self.BACKUPDIR, self.full_backup_timestamp[:8]), dumped_files, alternative_storage_unit)
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.9'), 'Skipped on version before 4.3.9')
     def test_ddboost_33_dynamic_storage_unit_on_specific_objects(self):
         """
         Note: storage unit TEMP is assumed to already exist on DD server.

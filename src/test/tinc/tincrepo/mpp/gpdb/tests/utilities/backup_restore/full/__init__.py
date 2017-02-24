@@ -297,11 +297,8 @@ class BackupTestCase(TINCTestCase):
         version = self.get_version()
         for file in os.listdir(load_path):
             if file.endswith(".sql"):
-                if '4.2' in version and '4_3' in file:
-                    continue
-                else:
-                    out_file = file.replace(".sql", ".out")
-                    assert PSQL.run_sql_file(sql_file = load_path + file, dbname = dbname, port = self.pgport, out_file = load_path + out_file)
+                out_file = file.replace(".sql", ".out")
+                assert PSQL.run_sql_file(sql_file = load_path + file, dbname = dbname, port = self.pgport, out_file = load_path + out_file)
 
     def get_version(self):
         result = PSQL.run_sql_command('select version();', flags='-t -q', dbname='postgres')

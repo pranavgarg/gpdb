@@ -90,7 +90,6 @@ class test_backup_restore(BackupTestCase):
     def test_00_ddboost_config_without_storage_unit(self):
         self.ddboost_config_setup(self.BACKUPDIR)
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.9'), 'Skipped on version before 4.3.9')
     def test_00_ddboost_config_with_storage_unit(self):
         self.ddboost_config_setup(self.BACKUPDIR, storage_unit="GPDB1")
 
@@ -499,7 +498,6 @@ class test_backup_restore(BackupTestCase):
             msg = "Failed to delete dir %s on DD \n" % (self.BACKUPDIR)
             raise Exception('Error: %s\n%s'% (msg,out))
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.9'), 'Skipped on version before 4.3.9')
     def test_ddboost_dynamic_storage_unit(self):
         """
         Note: storage unit TEMP is assumed to already exist on DD server.
@@ -548,7 +546,6 @@ class test_backup_restore(BackupTestCase):
         self.delete_ddboost_files(os.path.join('/', self.BACKUPDIR, self.full_backup_timestamp[:8]), full_dumped_files, alternative_storage_unit)
         self.delete_ddboost_files(os.path.join('/', self.BACKUPDIR, self.backup_timestamp[:8]), incr_dumped_files, alternative_storage_unit)
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.9'), 'Skipped on version before 4.3.9')
     def test_ddboost_dynamic_storage_unit_noplan(self):
         """
         Run dynamic storage incremental restore with noplan option

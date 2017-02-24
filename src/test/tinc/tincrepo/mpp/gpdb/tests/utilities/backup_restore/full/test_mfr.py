@@ -408,7 +408,6 @@ class test_mfr(BackupTestCase):
 
             raise Exception(msg)
 
-    @unittest.skipIf(is_earlier_than(version, '4.3.9'), 'Skipped on version before 4.3.9')
     def test_22_dynamic_storage_unit_with_replicate_and_recover(self):
         default_dbname = 'gptest'
         if not self.check_db_exists('gptest'):

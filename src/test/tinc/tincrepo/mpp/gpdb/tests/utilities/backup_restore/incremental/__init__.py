@@ -380,11 +380,8 @@ class BackupTestCase(TINCTestCase):
         version = self.get_version()
         for file in os.listdir(load_path):
             if file.endswith(".sql"):
-                if version.startswith('4.2') and '4_3' in file:
-                    continue
-                else:
-                    out_file = file.replace(".sql", ".out")
-                    assert PSQL.run_sql_file(sql_file = load_path + file, dbname = dbname, port = self.pgport, out_file = load_path + out_file)
+                out_file = file.replace(".sql", ".out")
+                assert PSQL.run_sql_file(sql_file = load_path + file, dbname = dbname, port = self.pgport, out_file = load_path + out_file)
 
     def run_workload(self, dir, dbname, verify = False):
         tinctest.logger.info("Running workload ...")
@@ -600,12 +597,7 @@ class BackupTestCase(TINCTestCase):
 
         # Check version and use a different dirty_table_list for 4.2 and others
         version = self.get_version()
-        if version.startswith('4.2'):
-            table_list = local_path('%s/dirty_table_list'% (dirty_dir))
-        else:
-            table_list = local_path('%s/dirty_table_list_4_3'% (dirty_dir))
-        if not os.path.exists(table_list):
-            table_list = local_path('%s/dirty_table_list'% (dirty_dir))
+        table_list = local_path('%s/dirty_table_list'% (dirty_dir))
         tinctest.logger.info("Got the table_list for answering file: %s" % table_list)
         dirty_list = self.sort_file_contents(table_list)
         if ddboost:
