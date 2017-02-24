@@ -20,10 +20,8 @@ Alter table co_table_new_name  Drop constraint tbl_chk_con1;
 -- Alter column  set statistics
 Alter table co_table14 alter column before_rename_col set statistics 3;
 
--- Alter table cluster on indexname
-Alter table co_table15 cluster on co_table15_idx;
-
 -- Alter table SET without cluster
+Alter table co_table15 set without cluster;
 Alter table co_table16 set without cluster;
 
 -- Alter table NO inherit from parent table

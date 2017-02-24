@@ -20,10 +20,8 @@ Alter table ao_table_new_name  Drop constraint tbl_chk_con1;
 -- Alter column  set statistics
 Alter table ao_table14 alter column before_rename_col set statistics 3;
 
--- Alter table cluster on indexname
-Alter table ao_table15 cluster on ao_table15_idx;
-
 -- Alter table SET without cluster
+Alter table ao_table15 set without cluster;
 Alter table ao_table16 set without cluster;
 
 --Alter table SET without OIDs
