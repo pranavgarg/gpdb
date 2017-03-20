@@ -34,6 +34,7 @@ def parseargs():
     parser.add_option('--skipvalidation', action='store_true')
     parser.add_option('--masteronly', action='store_true')
     parser.add_option('--debug', action='store_true')
+    parser.add_option('--file-compare', dest='file_compare', action='store_true')
     parser.add_option('-c', '--change', type='string')
     parser.add_option('-r', '--remove', type='string')
     parser.add_option('-s', '--show', type='string')
@@ -200,8 +201,8 @@ def do_show_from_psql(gucname, longform):
         dburl = dbconn.DbURL()
         conn = dbconn.connect(dburl, False)
         query = JetPackQuery(gucname).query
-        rows = dbconn.execSQL(conn, query)
-        gucs = [JetPackGuc(r) for r in rows]
+        cursor = dbconn.execSQL(conn, query)
+        gucs = [JetPackGuc(r) for r in cursor]
         _print_gucs(gucname, gucs, longform)
         conn.close()
 
@@ -216,39 +217,41 @@ def do_show_from_psql(gucname, longform):
 
 
 def _print_gucs(gucname, gucs, longform):
-    mastervalue = None
-    value = None
-    valid = True
     if longform:
         print "GUC                 : %s" % gucname
         for guc in gucs:
             print "Context: %5s Value: %s" % (guc.context, guc.value)
     else:
         for guc in gucs:
+            guc.print_info()
 
+def _print_gucs_with_source(gucname, gucs_from_psql, gucs_from_file, longform):
+    mastervalue_fromfile = None
+    segmentvalue_fromfile = None
+    mastervalue_frompsql = None
+    segmentvalue_frompsql = None
+
+    if longform:
+        print "GUC                 : %s" % gucname
+        for guc in gucs:
+            print "Context: %5s Value: %s" % (guc.context, guc.value)
+    else:
+        for guc in gucs_from_psql:
             if guc.context == -1:
-                mastervalue = guc.value
-
-            elif not value:
-                value = guc.value
-
-            elif value == guc.value:
-                pass
+                mastervalue_frompsql = guc.value
 
             else:
-                valid = False
-                break
+                segmentvalue_frompsql = guc.value
 
-        if valid:
-            print "Values on all segments are consistent"
-            print "GUC          : %s" % gucname
-            print "Master  value: %s" % mastervalue
-            print "Segment value: %s" % value
+        for guc in gucs_from_file:
+            if guc.context == -1:
+                mastervalue_fromfile = guc.value
 
-        else:
-            print "WARNING: GUCS ARE OUT OF SYNC: "
-            for guc in gucs:
-                guc.print_info()
+            else:
+                segmentvalue_fromfile = guc.value
+
+    print "Master  value: %s | File: %s" % (mastervalue_frompsql, mastervalue_fromfile)
+    print "Segment value: %s | File: %s" % (segmentvalue_frompsql, segmentvalue_fromfile)
 
 
 def do_add_config_script(pool, hostname, segs, value, options):
@@ -400,6 +403,24 @@ def log_and_raise(err_str):
     raise Exception(err_str)
 
 
+def gucs_are_consistent_file_psql(gucs_from_psql, gucs_from_file):
+    return True
+
+def gucs_are_consistent_across_segments(gucs_from_psql, gucs_from_file):
+    return True
+
+def do_show_guc_consistency_check(gucname):
+    pass
+
+def get_guc_from_file(gucname, long_format):
+    pass
+
+
+def get_guc_from_psql(gucname, long_format):
+    pass
+
+
+
 def do_show_from_file(gucname, long_format):
 
     dburl = dbconn.DbURL()
@@ -429,11 +450,118 @@ def do_show_from_file(gucname, long_format):
         if not value:
             value = "not set in postgresql.conf"
         gucs.append(JetPackGuc([cmd.get_seg_content_id(), gucname, value]))
+
+    if values_on_segements_consistent(gucs):
+        print "Values on all segments are consistent"
+    else:
+        print "WARNING: GUCS ARE OUT OF SYNC ON SEGMENTS"
     _print_gucs(gucname, gucs, long_format)
 
     pool.check_results()
     pool.haltWork()
     pool.joinWorkers()
+
+def do_show_compare_from_file(gucname, long_format):
+    gucs_from_file = []
+    gucs_from_psql = []
+
+    #do_show_from_file(gucname, long_format)
+    dburl = dbconn.DbURL()
+    gparray = GpArray.initFromCatalog(dburl, utility=True)
+
+    pool = WorkerPool()
+    host_cache = GpHostCache(gparray, pool, withMasters=True)
+    failed_pings = host_cache.ping_hosts(pool)
+
+    if len(failed_pings):
+        for i in failed_pings:
+            logger.warning('unreachable host: ' + i.hostname)
+        confirm_user()
+
+    commands = []
+    for h in host_cache.get_hosts():
+        for seg in h.dbs:
+            command = GpReadConfig("readConfig", h, seg, gucname)
+            commands.append(command)
+            pool.addCommand(command)
+
+    pool.join()
+
+
+    for cmd in pool.getCompletedItems():
+        value = cmd.get_guc_value()
+        if not value:
+            value = "not set in postgresql.conf"
+        gucs_from_file.append(JetPackGuc([cmd.get_seg_content_id(), gucname, value]))
+
+    pool.check_results()
+    pool.haltWork()
+    pool.joinWorkers()
+
+    #do_show_from_psql(gucname, long_format)
+    try:
+        dburl = dbconn.DbURL()
+        conn = dbconn.connect(dburl, False)
+        query = JetPackQuery(gucname).query
+        cursor = dbconn.execSQL(conn, query)
+        for r in cursor:
+            gucs_from_psql.append(JetPackGuc(r))
+
+        conn.close()
+
+    except DatabaseError as ex:
+
+        if re.search("unrecognized configuration parameter", ex.__str__()):
+            logger.error('Failed to retrieve GUC information, guc does not exist: ' + gucname)
+        elif re.search("could not connect to server", ex.__str__()):
+            logger.error('Failed to retrieve GUC information, the database is not accessible')
+        else:
+            logger.error('Failed to retrieve GUC information: ' + ex.__str__())
+
+
+    if values_on_segements_consistent(gucs_from_psql) and values_on_segements_consistent(gucs_from_file):
+        print "Values on all segments are consistent"
+    else:
+        print "WARNING: GUCS ARE OUT OF SYNC ON SEGMENTS"
+    if values_between_user_and_file_consistent(gucs_from_file + gucs_from_psql):
+        print "Values between user and postgresql.conf file are consistent"
+    else:
+        print "Values between user and postgresql.conf file differ"
+
+
+    _print_gucs_with_source(gucname, gucs_from_file, gucs_from_psql, long_format)
+
+
+def values_on_segements_consistent(gucs):
+    mastervalue = None
+    value = None
+    valid = True
+    for guc in gucs:
+
+        if guc.context == -1:
+            mastervalue = guc.value
+
+        elif not value:
+            value = guc.value
+
+        elif value == guc.value:
+            pass
+
+        else:
+            valid = False
+            break
+
+    return valid
+
+def values_between_user_and_file_consistent(gucs):
+    valid = True
+    value = gucs[0].value
+
+    for guc in gucs:
+        if guc.value != value:
+            valid = False
+
+    return valid
 
 
 def do_main():
@@ -445,12 +573,20 @@ def do_main():
         # TODO looks like the following line is supposed to be ... options.value in longShow
         # therefore, this long format has NEVER been used and can be removed.
         long_format = options.show in longShow
+
+
         if options.skipvalidation:
             log_and_raise('--skipvalidation can not be combined with --show')
         elif options.file:
             do_show_from_file(options.show, long_format)
+        elif options.file_compare:
+            do_show_compare_from_file(options.show, long_format)
         else:
             do_show_from_psql(options.show, long_format)
+
+        do_show_guc_consistency_check(options.show)
+        #do_show_gucs()
+
 
     elif options.remove or options.change:
         do_change(options)

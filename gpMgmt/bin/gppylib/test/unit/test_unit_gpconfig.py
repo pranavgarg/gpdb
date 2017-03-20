@@ -63,10 +63,10 @@ class GpConfig(GpTestCase):
 
         self.master_read_config = Mock()
         self.master_read_config.get_guc_value.return_value = "foo"
-        self.master_read_config.get_seg_id.return_value = -1
+        self.master_read_config.get_seg_content_id.return_value = -1
         self.segment_read_config = Mock()
         self.segment_read_config.get_guc_value.return_value = "foo"
-        self.segment_read_config.get_seg_id.return_value = 0
+        self.segment_read_config.get_seg_content_id.return_value = 0
 
         self.pool = Mock()
         self.pool.getCompletedItems.return_value = [self.master_read_config, self.segment_read_config]
@@ -176,7 +176,7 @@ class GpConfig(GpTestCase):
         self.segment_read_config.get_guc_value.return_value = 'bar'
         another_segment_read_config = Mock()
         another_segment_read_config.get_guc_value.return_value = "baz"
-        another_segment_read_config.get_seg_id.return_value = 1
+        another_segment_read_config.get_seg_content_id.return_value = 1
         self.pool.getCompletedItems.return_value.append(another_segment_read_config)
         self.host_cache.get_hosts.return_value.extend([self.host, self.host])
 
@@ -215,7 +215,7 @@ class GpConfig(GpTestCase):
         sys.argv = ["gpconfig", "-c", entry, "-v", "100", "--masteronly"]
         # 'SELECT name, setting, unit, short_desc, context, vartype, min_val, max_val FROM pg_settings'
         self.cursor.set_result_for_testing([['my_property_name', 'setting', 'unit', 'short_desc',
-                         'context', 'vartype', 'min_val', 'max_val']])
+                        'context', 'vartype', 'min_val', 'max_val']])
 
         self.subject.do_main()
 
@@ -259,6 +259,67 @@ class GpConfig(GpTestCase):
         self.subject.logger.fatal.assert_called_once_with("GUC Validation Failed: my_hidden_guc_name cannot be "
                                                           "changed under normal conditions. "
                                                           "Please refer to gpconfig documentation.")
+
+    def test_option_filecompare_fail(self):
+
+        with self.assertRaisesRegexp(Exception, "No action specified.  See the --help info."):
+            sys.argv = ["gpconfig", "--file-compare"]
+            self.subject.do_main()
+
+        self.subject.logger.error.assert_called_once_with("No action specified.  See the --help info.")
+
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_option_filecompare_with_option_pass_segments_consistent(self, mock_stdout):
+        sys.argv = ["gpconfig", "-s", "my_guc_name", "--file-compare"]
+        self.master_read_config.get_guc_value.return_value = 'foo'
+        self.segment_read_config.get_guc_value.return_value = 'foo'
+        another_segment_read_config = Mock()
+        another_segment_read_config.get_guc_value.return_value = "foo"
+        another_segment_read_config.get_seg_content_id.return_value = 1
+        self.pool.getCompletedItems.return_value.append(another_segment_read_config)
+
+        # 'SELECT name, setting, unit, short_desc, context, vartype, min_val, max_val FROM pg_settings'
+        # select * from gp_toolkit.gp_param_setting('%s')S
+        # paramsegemtn, paramname, paramvalue for gp_param
+        self.cursor.set_result_for_testing([[-1, 'my_guc_name', 'foo'], [1, 'my_guc_name', 'foo']])
+
+        self.subject.do_main()
+
+        #raise Exception(mock_stdout.getvalue())
+        self.assertIn("Values on all segments are consistent", mock_stdout.getvalue())
+        self.assertIn("Values between user and postgresql.conf file are consistent", mock_stdout.getvalue())
+        self.assertIn("Master  value: foo | File: foo", mock_stdout.getvalue())
+
+
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_gucs_are_inconsistent_across_segements_with_file_compare(self, mock_stdout):
+        sys.argv = ["gpconfig", "-s", "my_guc_name", "--file-compare"]
+        self.master_read_config.get_guc_value.return_value = 'foo'
+        self.segment_read_config.get_guc_value.return_value = 'bar'
+        another_segment_read_config = Mock()
+        another_segment_read_config.get_guc_value.return_value = "foo"
+        another_segment_read_config.get_seg_content_id.return_value = 1
+        self.pool.getCompletedItems.return_value.append(another_segment_read_config)
+
+
+        # 'SELECT name, setting, unit, short_desc, context, vartype, min_val, max_val FROM pg_settings'
+        # select * from gp_toolkit.gp_param_setting('%s')S
+        # paramsegemtn, paramname, paramvalue for gp_param
+        self.cursor.set_result_for_testing([[-1, 'my_guc_name', 'foo'], [1, 'my_guc_name', 'foo']])
+
+        self.subject.do_main()
+
+        #raise Exception(mock_stdout.getvalue())
+        self.assertIn("WARNING: GUCS ARE OUT OF SYNC ON SEGMENTS", mock_stdout.getvalue())
+        #self.assertIn("Values between user and postgresql.conf file are consistent", mock_stdout.getvalue())
+        # TODO: How do we output inconsistency between psql and file
+        self.assertIn("Master  value: foo | File: foo", mock_stdout.getvalue())
+
+
+    def test_gucs_are_consistent(self):
+        pass
+
+
 
 
 if __name__ == '__main__':
