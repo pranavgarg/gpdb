@@ -61,15 +61,15 @@ class GpConfig(GpTestCase):
         self.host_cache.get_hosts.return_value = [self.host]
         self.host_cache.ping_hosts.return_value = []
 
-        self.master_read_config = Mock()
-        self.master_read_config.get_guc_value.return_value = "foo"
-        self.master_read_config.get_seg_content_id.return_value = -1
-        self.segment_read_config = Mock()
-        self.segment_read_config.get_guc_value.return_value = "foo"
-        self.segment_read_config.get_seg_content_id.return_value = 0
+        self.master_read_file_config = Mock()
+        self.master_read_file_config.get_guc_value.return_value = "foo"
+        self.master_read_file_config.get_seg_content_id.return_value = -1
+        self.segment_read_file_config = Mock()
+        self.segment_read_file_config.get_guc_value.return_value = "foo"
+        self.segment_read_file_config.get_seg_content_id.return_value = 0
 
         self.pool = Mock()
-        self.pool.getCompletedItems.return_value = [self.master_read_config, self.segment_read_config]
+        self.pool.getCompletedItems.return_value = [self.master_read_file_config, self.segment_read_file_config]
 
         self.apply_patches([
             patch('os.environ', new=self.os_env),
@@ -78,7 +78,7 @@ class GpConfig(GpTestCase):
             patch('gpconfig.dbconn.execSQLForSingleton', side_effect=singleton_side_effect),
             patch('gpconfig.GpHostCache', return_value=self.host_cache),
             patch('gpconfig.GpArray.initFromCatalog', return_value=self.gparray),
-            patch('gpconfig.GpReadConfig', return_value=self.master_read_config),
+            patch('gpconfig.GpReadConfig', return_value=self.master_read_file_config),
             patch('gpconfig.WorkerPool', return_value=self.pool)
         ])
         sys.argv = ["gpconfig"] # reset to relatively empty args list
@@ -150,7 +150,7 @@ class GpConfig(GpTestCase):
 
         self.subject.do_main()
 
-        self.pool.addCommand.assert_called_once_with(self.master_read_config)
+        self.pool.addCommand.assert_called_once_with(self.master_read_file_config)
         self.pool.join.assert_called_once_with()
         self.pool.check_results.assert_called_once_with()
         self.pool.haltWork.assert_called_once_with()
@@ -161,8 +161,8 @@ class GpConfig(GpTestCase):
     @patch('sys.stdout', new_callable=StringIO)
     def test_option_f_will_report_absence_of_setting(self, mock_stdout):
         sys.argv = ["gpconfig", "--show", "my_property_name", "--file"]
-        self.master_read_config.get_guc_value.return_value = None
-        self.segment_read_config.get_guc_value.return_value = None
+        self.master_read_file_config.get_guc_value.return_value = None
+        self.segment_read_file_config.get_guc_value.return_value = None
 
         self.subject.do_main()
 
@@ -172,8 +172,8 @@ class GpConfig(GpTestCase):
     @patch('sys.stdout', new_callable=StringIO)
     def test_option_f_will_report_difference_segments_out_of_sync(self, mock_stdout):
         sys.argv = ["gpconfig", "--show", "my_property_name", "--file"]
-        self.master_read_config.get_guc_value.return_value = 'foo'
-        self.segment_read_config.get_guc_value.return_value = 'bar'
+        self.master_read_file_config.get_guc_value.return_value = 'foo'
+        self.segment_read_file_config.get_guc_value.return_value = 'bar'
         another_segment_read_config = Mock()
         another_segment_read_config.get_guc_value.return_value = "baz"
         another_segment_read_config.get_seg_content_id.return_value = 1
@@ -260,19 +260,44 @@ class GpConfig(GpTestCase):
                                                           "changed under normal conditions. "
                                                           "Please refer to gpconfig documentation.")
 
-    def test_option_filecompare_fail(self):
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_gucs_are_inconsistent_across_segments_with_file_compare(self, mock_stdout):
+        sys.argv = ["gpconfig", "-s", "my_guc_name", "--file-compare"]
+        self.master_read_file_config.get_guc_value.return_value = 'my_file_master_value'
+        self.segment_read_file_config.get_guc_value.return_value = 'first_segment_value'
+        another_segment_read_config = Mock()
+        another_segment_read_config.get_guc_value.return_value = "second_segment_value"
+        another_segment_read_config.get_seg_content_id.return_value = 1
+        self.pool.getCompletedItems.return_value.append(another_segment_read_config)
 
+
+        # 'SELECT name, setting, unit, short_desc, context, vartype, min_val, max_val FROM pg_settings'
+        # select * from gp_toolkit.gp_param_setting('%s')S
+        # paramsegemtn, paramname, paramvalue for gp_param
+
+        # database values are NOT different
+        self.cursor.set_result_for_testing([[-1, 'my_guc_name', 'my_master_value'], [1, 'my_guc_name', 'my_master_value'], [2, 'my_guc_name', 'my_master_value']])
+
+        self.subject.do_main()
+
+        #raise Exception(mock_stdout.getvalue())
+        self.assertIn("WARNING: GUCS ARE OUT OF SYNC ON SEGMENTS", mock_stdout.getvalue())
+        #self.assertIn("Values between user and postgresql.conf file are consistent", mock_stdout.getvalue())
+        # TODO: How do we output inconsistency between psql and file
+        self.assertIn("Master  value: my_master_value | File: first_segment_value", mock_stdout.getvalue())
+        self.assertIn("Master  value: my_master_value | File: second_segment_value", mock_stdout.getvalue())
+
+    def test_option_filecompare_fail(self):
         with self.assertRaisesRegexp(Exception, "No action specified.  See the --help info."):
             sys.argv = ["gpconfig", "--file-compare"]
             self.subject.do_main()
-
         self.subject.logger.error.assert_called_once_with("No action specified.  See the --help info.")
 
     @patch('sys.stdout', new_callable=StringIO)
-    def test_option_filecompare_with_option_pass_segments_consistent(self, mock_stdout):
+    def test_option_filecompare_with_segments_consistent_reports_ok(self, mock_stdout):
         sys.argv = ["gpconfig", "-s", "my_guc_name", "--file-compare"]
-        self.master_read_config.get_guc_value.return_value = 'foo'
-        self.segment_read_config.get_guc_value.return_value = 'foo'
+        self.master_read_file_config.get_guc_value.return_value = 'foo'
+        self.segment_read_file_config.get_guc_value.return_value = 'foo'
         another_segment_read_config = Mock()
         another_segment_read_config.get_guc_value.return_value = "foo"
         another_segment_read_config.get_seg_content_id.return_value = 1
@@ -288,31 +313,6 @@ class GpConfig(GpTestCase):
         #raise Exception(mock_stdout.getvalue())
         self.assertIn("Values on all segments are consistent", mock_stdout.getvalue())
         self.assertIn("Values between user and postgresql.conf file are consistent", mock_stdout.getvalue())
-        self.assertIn("Master  value: foo | File: foo", mock_stdout.getvalue())
-
-
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_gucs_are_inconsistent_across_segements_with_file_compare(self, mock_stdout):
-        sys.argv = ["gpconfig", "-s", "my_guc_name", "--file-compare"]
-        self.master_read_config.get_guc_value.return_value = 'foo'
-        self.segment_read_config.get_guc_value.return_value = 'bar'
-        another_segment_read_config = Mock()
-        another_segment_read_config.get_guc_value.return_value = "foo"
-        another_segment_read_config.get_seg_content_id.return_value = 1
-        self.pool.getCompletedItems.return_value.append(another_segment_read_config)
-
-
-        # 'SELECT name, setting, unit, short_desc, context, vartype, min_val, max_val FROM pg_settings'
-        # select * from gp_toolkit.gp_param_setting('%s')S
-        # paramsegemtn, paramname, paramvalue for gp_param
-        self.cursor.set_result_for_testing([[-1, 'my_guc_name', 'foo'], [1, 'my_guc_name', 'foo']])
-
-        self.subject.do_main()
-
-        #raise Exception(mock_stdout.getvalue())
-        self.assertIn("WARNING: GUCS ARE OUT OF SYNC ON SEGMENTS", mock_stdout.getvalue())
-        #self.assertIn("Values between user and postgresql.conf file are consistent", mock_stdout.getvalue())
-        # TODO: How do we output inconsistency between psql and file
         self.assertIn("Master  value: foo | File: foo", mock_stdout.getvalue())
 
 

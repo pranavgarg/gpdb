@@ -26,6 +26,7 @@ longShow = set(["port"])
 logger = get_default_logger()
 setup_tool_logging(EXECNAME, getLocalHostname(), getUserName())
 
+
 def parseargs():
     parser = OptParser(option_class=OptChecker)
     parser.remove_option('-h')
@@ -88,7 +89,6 @@ def validate_mutual_options(options):
         log_and_raise("--file option requires that MASTER_DATA_DIRECTORY be set")
 
 
-
 class JetPackQuery:
     def __init__(self, name):
         self.query = "select * from gp_toolkit.gp_param_setting('%s')" % name
@@ -139,7 +139,7 @@ class Guc:
             if newval[0] != '0':
                 logger.warn(
                     'Permission not entered in octal format.It was interpreted as Decimal.  %s in Octal = 0%s' % (
-                    newval, int(newval, 8)))
+                        newval, int(newval, 8)))
         elif self.name == "gp_default_storage_options":
             newval = newval.strip()
             # Value must be enclosed in single quotes else postgres
@@ -164,7 +164,7 @@ class Guc:
 
     def print_info(self):
         print "[name: %s] [unit: %s] [context: %s] [vartype: %s] [min_val: %s] [max_val: %s]" % (
-        self.name, self.unit, self.context, self.vartype, self.min_val, self.max_val)
+            self.name, self.unit, self.context, self.vartype, self.min_val, self.max_val)
 
 
 def confirm_user():
@@ -225,33 +225,38 @@ def _print_gucs(gucname, gucs, longform):
         for guc in gucs:
             guc.print_info()
 
-def _print_gucs_with_source(gucname, gucs_from_psql, gucs_from_file, longform):
+
+def _print_gucs_with_source(gucname, gucs_from_psql, longform, gucs_from_file, segments_consistent=True):
     mastervalue_fromfile = None
-    segmentvalue_fromfile = None
+    segmentvalue_fromfile = []
     mastervalue_frompsql = None
-    segmentvalue_frompsql = None
+    segmentvalue_frompsql = []
 
     if longform:
         print "GUC                 : %s" % gucname
-        for guc in gucs:
-            print "Context: %5s Value: %s" % (guc.context, guc.value)
+        # for guc in gucs:
+        #     print "Context: %5s Value: %s" % (guc.context, guc.value)
     else:
         for guc in gucs_from_psql:
             if guc.context == -1:
                 mastervalue_frompsql = guc.value
 
             else:
-                segmentvalue_frompsql = guc.value
+                segmentvalue_frompsql.append(guc.value)
 
         for guc in gucs_from_file:
             if guc.context == -1:
                 mastervalue_fromfile = guc.value
 
             else:
-                segmentvalue_fromfile = guc.value
+                segmentvalue_fromfile.append(guc.value)
 
     print "Master  value: %s | File: %s" % (mastervalue_frompsql, mastervalue_fromfile)
-    print "Segment value: %s | File: %s" % (segmentvalue_frompsql, segmentvalue_fromfile)
+    if segments_consistent:
+        print "Segment value: %s | File: %s" % (segmentvalue_frompsql[0], segmentvalue_fromfile[0])
+    else:
+        for seg_plsql, seg_file in zip(segmentvalue_frompsql, segmentvalue_fromfile):
+            print "Segment value: %s | File: %s" % (seg_plsql, seg_file)
 
 
 def do_add_config_script(pool, hostname, segs, value, options):
@@ -406,11 +411,14 @@ def log_and_raise(err_str):
 def gucs_are_consistent_file_psql(gucs_from_psql, gucs_from_file):
     return True
 
+
 def gucs_are_consistent_across_segments(gucs_from_psql, gucs_from_file):
     return True
 
+
 def do_show_guc_consistency_check(gucname):
     pass
+
 
 def get_guc_from_file(gucname, long_format):
     pass
@@ -420,9 +428,7 @@ def get_guc_from_psql(gucname, long_format):
     pass
 
 
-
 def do_show_from_file(gucname, long_format):
-
     dburl = dbconn.DbURL()
     gparray = GpArray.initFromCatalog(dburl, utility=True)
 
@@ -461,11 +467,12 @@ def do_show_from_file(gucname, long_format):
     pool.haltWork()
     pool.joinWorkers()
 
+
 def do_show_compare_from_file(gucname, long_format):
     gucs_from_file = []
     gucs_from_psql = []
 
-    #do_show_from_file(gucname, long_format)
+    # do_show_from_file(gucname, long_format)
     dburl = dbconn.DbURL()
     gparray = GpArray.initFromCatalog(dburl, utility=True)
 
@@ -487,7 +494,6 @@ def do_show_compare_from_file(gucname, long_format):
 
     pool.join()
 
-
     for cmd in pool.getCompletedItems():
         value = cmd.get_guc_value()
         if not value:
@@ -498,7 +504,7 @@ def do_show_compare_from_file(gucname, long_format):
     pool.haltWork()
     pool.joinWorkers()
 
-    #do_show_from_psql(gucname, long_format)
+    # do_show_from_psql(gucname, long_format)
     try:
         dburl = dbconn.DbURL()
         conn = dbconn.connect(dburl, False)
@@ -518,18 +524,21 @@ def do_show_compare_from_file(gucname, long_format):
         else:
             logger.error('Failed to retrieve GUC information: ' + ex.__str__())
 
-
     if values_on_segements_consistent(gucs_from_psql) and values_on_segements_consistent(gucs_from_file):
         print "Values on all segments are consistent"
+        _print_gucs_with_source(gucname, gucs_from_psql, long_format, gucs_from_file, True)
     else:
         print "WARNING: GUCS ARE OUT OF SYNC ON SEGMENTS"
+        _print_gucs_with_source(gucname, gucs_from_psql, long_format, gucs_from_file, False)
     if values_between_user_and_file_consistent(gucs_from_file + gucs_from_psql):
         print "Values between user and postgresql.conf file are consistent"
+        _print_gucs_with_source(gucname, gucs_from_psql, long_format, gucs_from_file, True)
     else:
         print "Values between user and postgresql.conf file differ"
+    _print_gucs_with_source(gucname, gucs_from_psql, long_format, gucs_from_file, True)
 
 
-    _print_gucs_with_source(gucname, gucs_from_file, gucs_from_psql, long_format)
+#    _print_gucs_with_source(gucname, gucs_from_psql, long_format, gucs_from_file)
 
 
 def values_on_segements_consistent(gucs):
@@ -553,6 +562,7 @@ def values_on_segements_consistent(gucs):
 
     return valid
 
+
 def values_between_user_and_file_consistent(gucs):
     valid = True
     value = gucs[0].value
@@ -574,7 +584,6 @@ def do_main():
         # therefore, this long format has NEVER been used and can be removed.
         long_format = options.show in longShow
 
-
         if options.skipvalidation:
             log_and_raise('--skipvalidation can not be combined with --show')
         elif options.file:
@@ -585,7 +594,7 @@ def do_main():
             do_show_from_psql(options.show, long_format)
 
         do_show_guc_consistency_check(options.show)
-        #do_show_gucs()
+        # do_show_gucs()
 
 
     elif options.remove or options.change:
