@@ -14,7 +14,6 @@ from mock import *
 from gp_unittest import *
 from gphostcache import GpHost
 
-
 db_singleton_side_effect_list = []
 
 
@@ -47,7 +46,7 @@ class GpConfig(GpTestCase):
 
         self.os_env = dict(USER="my_user")
         self.os_env["MASTER_DATA_DIRECTORY"] = self.temp_dir
-        self.gparray = self.createGpArrayWith2Primary2Mirrors()
+        self.gparray = self.create_gp_array_with_2primary_2mirrors()
         self.host_cache = Mock()
 
         self.host = GpHost('localhost')
@@ -81,14 +80,15 @@ class GpConfig(GpTestCase):
             patch('gpconfig.GpReadConfig', return_value=self.master_read_file_config),
             patch('gpconfig.WorkerPool', return_value=self.pool)
         ])
-        sys.argv = ["gpconfig"] # reset to relatively empty args list
+        sys.argv = ["gpconfig"]  # reset to relatively empty args list
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir)
         super(GpConfig, self).tearDown()
         del db_singleton_side_effect_list[:]
 
-    def createGpArrayWith2Primary2Mirrors(self):
+    @staticmethod
+    def create_gp_array_with_2primary_2mirrors():
         master = GpDB.initFromString(
             "1|-1|p|p|s|u|mdw|mdw|5432|None|/data/master||/data/master/base/10899,/data/master/base/1,/data/master/base/10898,/data/master/base/25780,/data/master/base/34782")
         primary0 = GpDB.initFromString(
@@ -174,10 +174,7 @@ class GpConfig(GpTestCase):
         sys.argv = ["gpconfig", "--show", "my_property_name", "--file"]
         self.master_read_file_config.get_guc_value.return_value = 'foo'
         self.segment_read_file_config.get_guc_value.return_value = 'bar'
-        another_segment_read_config = Mock()
-        another_segment_read_config.get_guc_value.return_value = "baz"
-        another_segment_read_config.get_seg_content_id.return_value = 1
-        self.pool.getCompletedItems.return_value.append(another_segment_read_config)
+        self._add_segment_to_read_config(1, "baz")
         self.host_cache.get_hosts.return_value.extend([self.host, self.host])
 
         self.subject.do_main()
@@ -194,20 +191,20 @@ class GpConfig(GpTestCase):
         sys.argv = ["gpconfig", "-c", entry, "-v", "100", "-m", "20"]
         # 'SELECT name, setting, unit, short_desc, context, vartype, min_val, max_val FROM pg_settings'
         self.cursor.set_result_for_testing([['my_property_name', 'setting', 'unit', 'short_desc',
-                         'context', 'vartype', 'min_val', 'max_val']])
+                                             'context', 'vartype', 'min_val', 'max_val']])
 
         self.subject.do_main()
 
         self.subject.logger.info.assert_called_with("completed successfully")
         self.assertEqual(self.pool.addCommand.call_count, 2)
-        segmentCommand = self.pool.addCommand.call_args_list[0][0][0]
-        self.assertTrue("my_property_name" in segmentCommand.cmdStr)
+        segment_command = self.pool.addCommand.call_args_list[0][0][0]
+        self.assertTrue("my_property_name" in segment_command.cmdStr)
         value = base64.urlsafe_b64encode(pickle.dumps("100"))
-        self.assertTrue(value in segmentCommand.cmdStr)
-        masterCommand = self.pool.addCommand.call_args_list[1][0][0]
-        self.assertTrue(("my_property_name") in masterCommand.cmdStr)
+        self.assertTrue(value in segment_command.cmdStr)
+        master_command = self.pool.addCommand.call_args_list[1][0][0]
+        self.assertTrue("my_property_name" in master_command.cmdStr)
         value = base64.urlsafe_b64encode(pickle.dumps("20"))
-        self.assertTrue(value in masterCommand.cmdStr)
+        self.assertTrue(value in master_command.cmdStr)
 
     def test_option_change_value_masteronly_succeed(self):
         db_singleton_side_effect_list.append("some happy result")
@@ -215,16 +212,16 @@ class GpConfig(GpTestCase):
         sys.argv = ["gpconfig", "-c", entry, "-v", "100", "--masteronly"]
         # 'SELECT name, setting, unit, short_desc, context, vartype, min_val, max_val FROM pg_settings'
         self.cursor.set_result_for_testing([['my_property_name', 'setting', 'unit', 'short_desc',
-                        'context', 'vartype', 'min_val', 'max_val']])
+                                             'context', 'vartype', 'min_val', 'max_val']])
 
         self.subject.do_main()
 
         self.subject.logger.info.assert_called_with("completed successfully")
         self.assertEqual(self.pool.addCommand.call_count, 1)
-        masterCommand = self.pool.addCommand.call_args_list[0][0][0]
-        self.assertTrue(("my_property_name") in masterCommand.cmdStr)
+        master_command = self.pool.addCommand.call_args_list[0][0][0]
+        self.assertTrue(("my_property_name") in master_command.cmdStr)
         value = base64.urlsafe_b64encode(pickle.dumps("100"))
-        self.assertTrue(value in masterCommand.cmdStr)
+        self.assertTrue(value in master_command.cmdStr)
 
     def test_option_change_value_master_separate_fail_not_valid_guc(self):
         db_singleton_side_effect_list.append("DatabaseError")
@@ -241,12 +238,12 @@ class GpConfig(GpTestCase):
 
         self.subject.logger.info.assert_called_with("completed successfully")
         self.assertEqual(self.pool.addCommand.call_count, 2)
-        segmentCommand = self.pool.addCommand.call_args_list[0][0][0]
-        self.assertTrue("my_hidden_guc_name" in segmentCommand.cmdStr)
-        masterCommand = self.pool.addCommand.call_args_list[1][0][0]
-        self.assertTrue(("my_hidden_guc_name") in masterCommand.cmdStr)
+        segment_command = self.pool.addCommand.call_args_list[0][0][0]
+        self.assertTrue("my_hidden_guc_name" in segment_command.cmdStr)
+        master_command = self.pool.addCommand.call_args_list[1][0][0]
+        self.assertTrue("my_hidden_guc_name" in master_command.cmdStr)
         value = base64.urlsafe_b64encode(pickle.dumps("100"))
-        self.assertTrue(value in masterCommand.cmdStr)
+        self.assertTrue(value in master_command.cmdStr)
 
     def test_option_change_value_hidden_guc_without_skipvalidation(self):
         db_singleton_side_effect_list.append("my happy result")
@@ -263,29 +260,19 @@ class GpConfig(GpTestCase):
     @patch('sys.stdout', new_callable=StringIO)
     def test_gucs_are_inconsistent_across_segments_with_file_compare(self, mock_stdout):
         sys.argv = ["gpconfig", "-s", "my_guc_name", "--file-compare"]
-        self.master_read_file_config.get_guc_value.return_value = 'my_file_master_value'
-        self.segment_read_file_config.get_guc_value.return_value = 'first_segment_value'
-        another_segment_read_config = Mock()
-        another_segment_read_config.get_guc_value.return_value = "second_segment_value"
-        another_segment_read_config.get_seg_content_id.return_value = 1
-        self.pool.getCompletedItems.return_value.append(another_segment_read_config)
-
-
-        # 'SELECT name, setting, unit, short_desc, context, vartype, min_val, max_val FROM pg_settings'
-        # select * from gp_toolkit.gp_param_setting('%s')S
-        # paramsegemtn, paramname, paramvalue for gp_param
-
-        # database values are NOT different
-        self.cursor.set_result_for_testing([[-1, 'my_guc_name', 'my_master_value'], [1, 'my_guc_name', 'my_master_value'], [2, 'my_guc_name', 'my_master_value']])
+        self.master_read_file_config.get_guc_value.return_value = 'my_master_value'
+        self.segment_read_file_config.get_guc_value.return_value = 'segment_value'
+        self._add_segment_to_read_config(1, "not_matching")
+        self.cursor.set_result_for_testing([[-1, 'my_guc_name', 'my_master_value'],
+                                            [0, 'my_guc_name', 'segment_value'],
+                                            [1, 'my_guc_name', 'segment_value']])
 
         self.subject.do_main()
 
-        #raise Exception(mock_stdout.getvalue())
         self.assertIn("WARNING: GUCS ARE OUT OF SYNC ON SEGMENTS", mock_stdout.getvalue())
-        #self.assertIn("Values between user and postgresql.conf file are consistent", mock_stdout.getvalue())
-        # TODO: How do we output inconsistency between psql and file
-        self.assertIn("Master  value: my_master_value | File: first_segment_value", mock_stdout.getvalue())
-        self.assertIn("Master  value: my_master_value | File: second_segment_value", mock_stdout.getvalue())
+        self.assertIn("GUC                 : my_guc_name", mock_stdout.getvalue())
+        self.assertIn("Segment value: segment_value | File: segment_value", mock_stdout.getvalue())
+        self.assertIn("Segment value: segment_value | File: not_matching", mock_stdout.getvalue())
 
     def test_option_filecompare_fail(self):
         with self.assertRaisesRegexp(Exception, "No action specified.  See the --help info."):
@@ -296,30 +283,25 @@ class GpConfig(GpTestCase):
     @patch('sys.stdout', new_callable=StringIO)
     def test_option_filecompare_with_segments_consistent_reports_ok(self, mock_stdout):
         sys.argv = ["gpconfig", "-s", "my_guc_name", "--file-compare"]
-        self.master_read_file_config.get_guc_value.return_value = 'foo'
+        self.master_read_file_config.get_guc_value.return_value = 'bar'
         self.segment_read_file_config.get_guc_value.return_value = 'foo'
-        another_segment_read_config = Mock()
-        another_segment_read_config.get_guc_value.return_value = "foo"
-        another_segment_read_config.get_seg_content_id.return_value = 1
-        self.pool.getCompletedItems.return_value.append(another_segment_read_config)
-
-        # 'SELECT name, setting, unit, short_desc, context, vartype, min_val, max_val FROM pg_settings'
-        # select * from gp_toolkit.gp_param_setting('%s')S
-        # paramsegemtn, paramname, paramvalue for gp_param
-        self.cursor.set_result_for_testing([[-1, 'my_guc_name', 'foo'], [1, 'my_guc_name', 'foo']])
+        self._add_segment_to_read_config(1, "foo")
+        self.cursor.set_result_for_testing([[-1, 'my_guc_name', 'bar'],
+                                            [0, 'my_guc_name', 'foo'],
+                                            [1, 'my_guc_name', 'foo']])
 
         self.subject.do_main()
 
-        #raise Exception(mock_stdout.getvalue())
+        self.assertIn("GUC                 : my_guc_name", mock_stdout.getvalue())
         self.assertIn("Values on all segments are consistent", mock_stdout.getvalue())
-        self.assertIn("Values between user and postgresql.conf file are consistent", mock_stdout.getvalue())
-        self.assertIn("Master  value: foo | File: foo", mock_stdout.getvalue())
+        self.assertIn("Master  value: bar | File: bar", mock_stdout.getvalue())
+        self.assertIn("Segment value: foo | File: foo", mock_stdout.getvalue())
 
-
-    def test_gucs_are_consistent(self):
-        pass
-
-
+    def _add_segment_to_read_config(self, id, value):
+        another_segment_read_config = Mock()
+        another_segment_read_config.get_guc_value.return_value = value
+        another_segment_read_config.get_seg_content_id.return_value = id
+        self.pool.getCompletedItems.return_value.append(another_segment_read_config)
 
 
 if __name__ == '__main__':
